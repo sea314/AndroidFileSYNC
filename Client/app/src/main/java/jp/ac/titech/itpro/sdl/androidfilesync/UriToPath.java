@@ -17,6 +17,9 @@ public class UriToPath {
 
     public static String getPathFromUri(final Context context, final Uri uri) {
         boolean isAfterKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
+        if (context==null || uri == null){
+            return null;
+        }
         // DocumentProvider
         if (isAfterKitKat && DocumentsContract.isDocumentUri(context, uri)) {
             if ("com.android.externalstorage.documents".equals(
