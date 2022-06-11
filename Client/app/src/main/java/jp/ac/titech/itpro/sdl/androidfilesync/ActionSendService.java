@@ -17,12 +17,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
-
-import javax.net.ssl.HttpsURLConnection;
 
 public class ActionSendService extends IntentService {
     private final static String TAG = ActionSendService.class.getSimpleName();
@@ -30,6 +26,7 @@ public class ActionSendService extends IntentService {
     public final static String EXTRA_ARG_URL = "ARG_URL";
     public final static String EXTRA_ARG_MODE = "ARG_MODE";
     final static int BUFFER_SIZE = 1024*10;
+    final static int RETRY_COUNT = 2;   // 送信のリトライ回数
 
 
     public ActionSendService() {
@@ -67,47 +64,6 @@ public class ActionSendService extends IntentService {
             for(String path : paths) {
                 SendFile(url, path, mode);
             }
-            /*
-
-
-                File file = new File(path);
-                Log.d(TAG, "更新日時："+file.lastModified());
-                try {
-                    FileInputStream steam = new FileInputStream(file);
-
-                    while((buffersize = steam.read(filebuffer)) > 0){
-                        // todo ここにファイル転送処理
-                        // GET リクエストの実行
-                        connection.setRequestMethod("GET");
-                        connection.connect();
-
-                        // // POST リクエストの実行
-                        // connection.setRequestMethod("POST");
-                        // connection.setRequestProperty("Content-Type", "text/plain");
-                        // OutputStream outputStream = connection.getOutputStream();
-                        // BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream));
-                        // writer.write(params[1]);
-                        // writer.close();
-                        // connection.connect();
-
-                        // レスポンスコードの確認します。
-                        int responseCode = connection.getResponseCode();
-                        if(responseCode != HttpsURLConnection.HTTP_OK) {
-                            throw new IOException("HTTP responseCode: " + responseCode);
-                        }
-                        else{
-                            Log.d(TAG, "HTTP_OK");
-                        }
-
-                    }
-                    steam.close();
-
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }*/
         }
         else{
             Log.d(TAG, "uri is not open");
@@ -147,48 +103,56 @@ public class ActionSendService extends IntentService {
         HttpURLConnection connection = null;
 
         try{
-            connection = (HttpURLConnection)url.openConnection();
-            connection.setConnectTimeout(3000); // タイムアウト 3 秒
-            connection.setReadTimeout(3000);
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);       // body有効化
-            connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
-            connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
-            connection.setRequestProperty("Split", String.valueOf(splitIndex));
-            connection.setRequestProperty("File-Path", path);
-            connection.setRequestProperty("File-Size", String.valueOf(fileSize));
-            connection.setRequestProperty("Last-Modified", String.valueOf(lastModified));
-            connection.setRequestProperty("Sha-256", calculateSha256(fileBuffer, bufferSize));
-            connection.setRequestProperty("Mode", mode);
-            byte[] body = base64encode(fileBuffer, bufferSize);
-            connection.setFixedLengthStreamingMode(body.length);
-            OutputStream httpStream = connection.getOutputStream();
+            for(int retryCount =0; retryCount < RETRY_COUNT; retryCount++){
+                connection = (HttpURLConnection)url.openConnection();
+                connection.setConnectTimeout(3000); // タイムアウト 3 秒
+                connection.setReadTimeout(3000);
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);       // body有効化
+                connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
+                connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
+                connection.setRequestProperty("Split", String.valueOf(splitIndex));
+                connection.setRequestProperty("File-Path", path);
+                connection.setRequestProperty("File-Size", String.valueOf(fileSize));
+                connection.setRequestProperty("Last-Modified", String.valueOf(lastModified));
+                connection.setRequestProperty("Sha-256", calculateSha256(fileBuffer, bufferSize));
+                connection.setRequestProperty("Mode", mode);
+                byte[] body = base64encode(fileBuffer, bufferSize);
+                connection.setFixedLengthStreamingMode(body.length);
+                OutputStream httpStream = connection.getOutputStream();
 
-            httpStream.write(body, 0, body.length);
-            connection.connect();
+                httpStream.write(body, 0, body.length);
+                connection.connect();
 
-            Log.i(TAG, "Split:"+splitIndex);
-            Log.i(TAG, "File-Path:"+path);
-            Log.i(TAG, "File-Size:"+fileSize);
-            Log.i(TAG, "Last-Modified:"+lastModified);
-            Log.i(TAG, "SHA256:"+calculateSha256(fileBuffer, bufferSize));
+                Log.i(TAG, "Split:"+splitIndex);
+                Log.i(TAG, "File-Path:"+path);
+                Log.i(TAG, "File-Size:"+fileSize);
+                Log.i(TAG, "Last-Modified:"+lastModified);
+                Log.i(TAG, "SHA256:"+calculateSha256(fileBuffer, bufferSize));
 
-            StringBuilder sb = new StringBuilder(20);
-            for(int i=0;i<10;i++) {
-                sb.append(String.format("%02x", fileBuffer[i]&0xff));
+                // レスポンスコードの確認します。
+                int responseCode = connection.getResponseCode();
+                String response = connection.getResponseMessage();
+                connection.disconnect();
+
+                switch(responseCode){
+                    case HttpURLConnection.HTTP_OK:
+                        Log.i(TAG, "HTTP_OK:"+response);
+                        return 0;
+
+                    case HttpURLConnection.HTTP_BAD_REQUEST:
+                        Log.e(TAG, "HTTP_BAD_REQUEST:"+response);
+                        continue;
+
+                    case HttpURLConnection.HTTP_SERVER_ERROR:
+                        Log.e(TAG, "HTTP_SERVER_ERROR:"+response);
+                        continue;
+
+                    default:
+                        Log.e(TAG, responseCode+":"+response);
+                        return -4;
+                }
             }
-            Log.i(TAG, "raw data:" + sb);
-
-            // レスポンスコードの確認します。
-            int responseCode = connection.getResponseCode();
-            String response = connection.getResponseMessage();
-            if(responseCode != HttpsURLConnection.HTTP_OK) {
-                throw new IOException("HTTP responseCode: " + responseCode);
-            }
-            else{
-                Log.d(TAG, "HTTP_OK:"+response);
-            }
-            connection.disconnect();
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -197,7 +161,7 @@ public class ActionSendService extends IntentService {
             e.printStackTrace();
             return -2;
         }
-        return 0;
+        return -3;
     }
 
     // sha256ハッシュ値を計算
