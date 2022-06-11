@@ -13,8 +13,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/labstack/echo"
-	"local.packages/winAPI"
+	"Server/winAPI"
+
+	"github.com/labstack/echo/v4"
 )
 
 type PostFileParam struct {

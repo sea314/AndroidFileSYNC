@@ -1,10 +1,10 @@
 package main
 
 import (
+	"Server/handler"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"local.packages/handler"
 )
 
 func main() {
