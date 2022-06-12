@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
-import android.util.Base64;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,10 +14,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class ActionSendService extends IntentService {
     private final static String TAG = ActionSendService.class.getSimpleName();
@@ -27,6 +23,7 @@ public class ActionSendService extends IntentService {
     public final static String EXTRA_ARG_MODE = "ARG_MODE";
     final static int BUFFER_SIZE = 1024*10;
     final static int RETRY_COUNT = 2;   // 送信のリトライ回数
+    ConnectServer connection;
 
 
     public ActionSendService() {
@@ -50,7 +47,7 @@ public class ActionSendService extends IntentService {
 
         WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
         WifiInfo w_info = wifiManager.getConnectionInfo();
-        Log.i(TAG, "SSID:"+ ((WifiInfo) w_info).getSSID());
+        Log.i(TAG, "SSID:"+ w_info.getSSID());
         Log.i(TAG, "BSSID:"+w_info.getBSSID());
         Log.i(TAG, "IP Address:"+w_info.getIpAddress());
         Log.i(TAG, "Network ID:"+w_info.getNetworkId());
@@ -68,9 +65,11 @@ public class ActionSendService extends IntentService {
         else{
             Log.d(TAG, "uri is not open");
         }
+
+        connection = new ConnectServer(getApplicationContext(), "password", 12345);
+        connection.connect();
+        Log.i(TAG, connection.getAddress());
     }
-
-
 
     private int SendFile(URL url, String path, String mode){
         byte[] fileBuffer = new byte[BUFFER_SIZE];
@@ -115,9 +114,9 @@ public class ActionSendService extends IntentService {
                 connection.setRequestProperty("File-Path", path);
                 connection.setRequestProperty("File-Size", String.valueOf(fileSize));
                 connection.setRequestProperty("Last-Modified", String.valueOf(lastModified));
-                connection.setRequestProperty("Sha-256", calculateSha256(fileBuffer, bufferSize));
+                connection.setRequestProperty("Sha-256", Encryption.sha256EncodeToString(fileBuffer, bufferSize));
                 connection.setRequestProperty("Mode", mode);
-                byte[] body = base64encode(fileBuffer, bufferSize);
+                byte[] body = Encryption.base64Encode(fileBuffer, bufferSize);
                 connection.setFixedLengthStreamingMode(body.length);
                 OutputStream httpStream = connection.getOutputStream();
 
@@ -128,7 +127,7 @@ public class ActionSendService extends IntentService {
                 Log.i(TAG, "File-Path:"+path);
                 Log.i(TAG, "File-Size:"+fileSize);
                 Log.i(TAG, "Last-Modified:"+lastModified);
-                Log.i(TAG, "SHA256:"+calculateSha256(fileBuffer, bufferSize));
+                Log.i(TAG, "SHA256:"+Encryption.sha256EncodeToString(fileBuffer, bufferSize));
 
                 // レスポンスコードの確認します。
                 int responseCode = connection.getResponseCode();
@@ -164,23 +163,6 @@ public class ActionSendService extends IntentService {
         return -3;
     }
 
-    // sha256ハッシュ値を計算
-    private String calculateSha256(byte[] fileBuffer, int bufferSize){
-        try {
-            byte[] cipher_byte;
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(fileBuffer, 0, bufferSize);
-            cipher_byte = md.digest();
-            return Base64.encodeToString(cipher_byte, Base64.DEFAULT);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private byte[] base64encode(byte[] bytes, int size){
-        return Base64.encode(Arrays.copyOf(bytes, size), Base64.DEFAULT);
-    }
 
     @Override
     public void onCreate() {

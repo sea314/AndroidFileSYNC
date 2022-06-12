@@ -1,3 +1,5 @@
+// winAPIとの連携用
+
 package winAPI
 
 import (
@@ -7,7 +9,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// winAPIとの連携用
 func WCharPtrToString(p *uint16) string {
 	return windows.UTF16PtrToString((*uint16)(unsafe.Pointer(p)))
 }

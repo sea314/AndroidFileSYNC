@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Server/connection"
 	"Server/handler"
 	"net/http"
 
@@ -8,6 +9,8 @@ import (
 )
 
 func main() {
+	go connection.ClientConnectionRecieve(12345)
+
 	e := echo.New()
 
 	e.POST("/file", handler.PostFileHandler)
@@ -25,10 +28,4 @@ func main() {
 	})
 
 	e.Logger.Fatal(e.Start(":12345"))
-}
-
-func helloHander(c echo.Context) error {
-	userID := c.Param("username")
-	lang := c.QueryParam("lang")
-	return c.String(http.StatusOK, "Hello, "+userID+lang+".\n")
 }

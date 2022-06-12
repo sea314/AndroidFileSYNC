@@ -8,12 +8,9 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.util.Log;
 
-import java.io.File;
-
-public class UriToPath {
-    private final static String TAG = UriToPath.class.getSimpleName();
+public class UriPath {
+    private final static String TAG = UriPath.class.getSimpleName();
 
     public static String getPathFromUri(final Context context, final Uri uri) {
         boolean isAfterKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
@@ -60,7 +57,7 @@ public class UriToPath {
     }
 
     static String getDataColumn(Context context, Uri uri, String selection,
-                                       String[] selectionArgs) {
+                                String[] selectionArgs) {
         Cursor cursor = null;
         final String[] projection = {
                 MediaStore.Files.FileColumns.DATA
@@ -78,4 +75,6 @@ public class UriToPath {
         }
         return null;
     }
+
+
 }
