@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	go connection.ClientConnectionRecieve(12345)
+	go connection.ClientConnectionRecieve(12345, "password")
 
 	e := echo.New()
 

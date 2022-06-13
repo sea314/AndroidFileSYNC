@@ -3,7 +3,6 @@
 package handler
 
 import (
-	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"syscall"
 
+	"Server/encryption"
 	"Server/winAPI"
 
 	"github.com/labstack/echo/v4"
@@ -72,7 +72,7 @@ func parsePostFileParam(request *http.Request) (PostFileParam, error) {
 
 	param.fileData, err2 = base64.StdEncoding.DecodeString(string(bodyBuffer))
 
-	if sha256 != calculateSha256(param.fileData) || err1 != nil || err2 != nil {
+	if sha256 != encryption.Sha256EncodeToString(param.fileData) || err1 != nil || err2 != nil {
 		return param, errors.New("read body error")
 	}
 	return param, nil
@@ -122,9 +122,4 @@ func writeFile(param PostFileParam) error {
 	syscall.SetFileTime(hFile, nil, nil, &modifiedTime)
 	syscall.CloseHandle(hFile)
 	return nil
-}
-
-func calculateSha256(bytes []byte) string {
-	cipher_bytes := sha256.Sum256(bytes)
-	return base64.StdEncoding.EncodeToString(cipher_bytes[0:])
 }
