@@ -41,14 +41,6 @@ public class ConnectServer {
 
     public int connect(){
         serverAddress = null;
-        WifiManager wifiManager = (WifiManager) context.getSystemService(WIFI_SERVICE);
-        WifiInfo w_info = wifiManager.getConnectionInfo();
-        Log.i(TAG, "SSID:"+ w_info.getSSID());
-        Log.i(TAG, "BSSID:"+w_info.getBSSID());
-        Log.i(TAG, "IP Address:"+w_info.getIpAddress());
-        Log.i(TAG, "Network ID:"+w_info.getNetworkId());
-        Log.i(TAG, "Link Speed:"+w_info.getLinkSpeed());
-
         sendBroadcast();
         receiveBroadCastResponse();
         return 0;
@@ -91,7 +83,6 @@ public class ConnectServer {
     static InetAddress getBroadcastAddress(Context context) throws IOException {
         WifiManager wifi = (WifiManager) context.getSystemService(WIFI_SERVICE);
         DhcpInfo dhcp = wifi.getDhcpInfo();
-
 
         int broadcast = (dhcp.ipAddress & dhcp.netmask) | ~dhcp.netmask;
         byte[] quads = new byte[4];

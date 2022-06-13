@@ -2,8 +2,6 @@ package jp.ac.titech.itpro.sdl.androidfilesync;
 
 import android.app.IntentService;
 import android.content.Intent;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.util.Log;
 
 import java.io.File;
@@ -44,16 +42,6 @@ public class ActionSendService extends IntentService {
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
-
-        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
-        WifiInfo w_info = wifiManager.getConnectionInfo();
-        Log.i(TAG, "SSID:"+ w_info.getSSID());
-        Log.i(TAG, "BSSID:"+w_info.getBSSID());
-        Log.i(TAG, "IP Address:"+w_info.getIpAddress());
-        Log.i(TAG, "Network ID:"+w_info.getNetworkId());
-        Log.i(TAG, "Link Speed:"+w_info.getLinkSpeed());
-
-
 
         if (paths != null) {
             Log.d(TAG, "paths:"+paths);
