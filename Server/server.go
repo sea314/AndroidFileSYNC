@@ -15,6 +15,8 @@ func main() {
 
 	e.POST("/file", handler.PostFileHandler)
 
+	e.GET("/filelist", handler.GetFileListHandler)
+
 	e.GET("/hello", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello World.\n")
 	})

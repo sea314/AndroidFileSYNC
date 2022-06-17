@@ -17,8 +17,9 @@ import java.util.ArrayList;
 public class ActionSendService extends IntentService {
     private final static String TAG = ActionSendService.class.getSimpleName();
     public final static String EXTRA_ARG_PATHS = "ARG_PATHS";
-    public final static String EXTRA_ARG_URL = "ARG_URL";
     public final static String EXTRA_ARG_MODE = "ARG_MODE";
+    public final static String EXTRA_ARG_PASSWORD_DIGEST = "ARG_PASSWORD_DIGEST";
+    public final static String EXTRA_ARG_PORT = "ARG_PORT";
     final static int BUFFER_SIZE = 1024*10;
     final static int RETRY_COUNT = 2;   // 送信のリトライ回数
     ConnectServer connection;
@@ -33,14 +34,23 @@ public class ActionSendService extends IntentService {
     protected void onHandleIntent(Intent intent) {
         Log.d(TAG, "onHandleIntent in " + Thread.currentThread());
         ArrayList<String> paths = intent.getStringArrayListExtra(EXTRA_ARG_PATHS);
-        String urlString = intent.getStringExtra(EXTRA_ARG_URL);
         String mode = intent.getStringExtra(EXTRA_ARG_MODE);
+        String password_digest = intent.getStringExtra(EXTRA_ARG_PASSWORD_DIGEST);
+        int port = intent.getIntExtra(EXTRA_ARG_PORT, 0);
 
-        URL url = null;
+        connection = new ConnectServer(getApplicationContext(), password_digest, port);
+        if(connection.connect() != 0){
+            Log.i(TAG, "サーバー接続失敗");
+            return;
+        }
+        Log.i(TAG, connection.getAddress());
+
+        URL url;
         try {
-            url = new URL(urlString);
+            url = new URL("http://"+connection.getAddress()+"/file");
         } catch (MalformedURLException e) {
             e.printStackTrace();
+            return;
         }
 
         if (paths != null) {
@@ -54,9 +64,6 @@ public class ActionSendService extends IntentService {
             Log.d(TAG, "uri is not open");
         }
 
-        connection = new ConnectServer(getApplicationContext(), "password", 12345);
-        connection.connect();
-        Log.i(TAG, connection.getAddress());
     }
 
     private int SendFile(URL url, String path, String mode){
@@ -68,11 +75,15 @@ public class ActionSendService extends IntentService {
             File file = new File(path);
             fileSteam = new FileInputStream(file);
 
-            for(int splitIndex = 0; (bufferSize = fileSteam.read(fileBuffer)) > 0; splitIndex++) {
+            int splitIndex = 0;
+            for(; (bufferSize = fileSteam.read(fileBuffer)) > 0; splitIndex++) {
                 SendFileData(splitIndex, url, fileBuffer,
                         bufferSize, file.length(), path,
                         file.lastModified(), mode);
             }
+            SendFileData(splitIndex, url, fileBuffer,
+                    0, 0, path,
+                    file.lastModified(), mode);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

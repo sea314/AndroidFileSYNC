@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 
 public class ConnectServer {
@@ -42,7 +43,9 @@ public class ConnectServer {
     public int connect(){
         serverAddress = null;
         sendBroadcast();
-        receiveBroadCastResponse();
+        if(receiveBroadCastResponse() != 0){
+            return -1;
+        }
         return 0;
     }
 
@@ -94,6 +97,7 @@ public class ConnectServer {
     int receiveBroadCastResponse(){
         try {
             ServerSocket serverSocket = new ServerSocket(local_port);
+            serverSocket.setSoTimeout(3000);
             Socket socket = serverSocket.accept();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -107,8 +111,14 @@ public class ConnectServer {
             }
 
             serverAddress = socket.getInetAddress();
+        } catch (SocketTimeoutException e){
+            e.printStackTrace();
+            Log.i(TAG, "receiveBroadCastResponse: タイムアウト");
+            return -2;
         } catch (IOException e) {
             e.printStackTrace();
+            Log.i(TAG, "receiveBroadCastResponse: IOエラー");
+            return -3;
         }
         return 0;
     }

@@ -1,0 +1,11 @@
+- Server、Clientの通信暗号化
+	1. https化
+	2. 自前で暗号化
+	
+- 同期機能
+
+- Clientの設定ダイアログ
+
+- Serverの設定ダイアログ
+
+

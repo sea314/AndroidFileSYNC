@@ -35,12 +35,12 @@ func PostFileHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 
-	fmt.Println("split:", param.split)
-	fmt.Println("path:", param.path)
-	fmt.Println("fileSize:", param.fileSize)
-	fmt.Println("lastModified:", param.lastModified)
-	fmt.Println("mode:", param.mode)
-	fmt.Printf("data:%x\n", param.fileData[0:10])
+	if param.split == 0 {
+		fmt.Println("path:", param.path)
+		fmt.Println("fileSize:", param.fileSize)
+		fmt.Println("lastModified:", param.lastModified)
+		fmt.Println("mode:", param.mode)
+	}
 
 	err = writeFile(param)
 	if err != nil {
@@ -99,27 +99,31 @@ func writeFile(param PostFileParam) error {
 	var file *os.File
 	if param.split == 0 {
 		var err error
-		file, err = os.Create(filepath)
+		file, err = os.Create(filepath + ".tmp")
 		if err != nil {
-			return errors.New("can't create file:" + filepath)
+			return errors.New("can't create file:" + filepath + ".tmp")
 		}
 	} else { // 分割2回目以降
 		var err error
-		file, err = os.OpenFile(filepath, os.O_WRONLY|os.O_APPEND, 0666)
+		file, err = os.OpenFile(filepath+".tmp", os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
-			return errors.New("can't open file:" + filepath)
+			return errors.New("can't open file:" + filepath + ".tmp")
 		}
 	}
 	file.Write(param.fileData)
 	file.Close()
 
-	w_filepath, err := winAPI.StringToWCharPtr(filepath)
-	if err != nil {
-		return errors.New("can't set modified time" + filepath)
+	if param.fileSize == 0 {
+		os.Remove(filepath)
+		os.Rename(filepath+".tmp", filepath)
+		w_filepath, err := winAPI.StringToWCharPtr(filepath)
+		if err != nil {
+			return errors.New("can't set modified time" + filepath)
+		}
+		hFile, err := syscall.CreateFile(w_filepath, syscall.GENERIC_WRITE, 0, nil, syscall.OPEN_EXISTING, syscall.FILE_ATTRIBUTE_NORMAL, 0)
+		modifiedTime := winAPI.UnixTimeToFileTime(param.lastModified)
+		syscall.SetFileTime(hFile, nil, nil, &modifiedTime)
+		syscall.CloseHandle(hFile)
 	}
-	hFile, err := syscall.CreateFile(w_filepath, syscall.GENERIC_WRITE, 0, nil, syscall.OPEN_EXISTING, syscall.FILE_ATTRIBUTE_NORMAL, 0)
-	modifiedTime := winAPI.UnixTimeToFileTime(param.lastModified)
-	syscall.SetFileTime(hFile, nil, nil, &modifiedTime)
-	syscall.CloseHandle(hFile)
 	return nil
 }

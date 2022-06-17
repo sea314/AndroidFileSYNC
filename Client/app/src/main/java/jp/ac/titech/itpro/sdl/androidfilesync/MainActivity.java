@@ -15,7 +15,6 @@ import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
-    private String url = "http://10.166.125.50:12345/file";
     String necessaryPermissions[] = {
         Manifest.permission.INTERNET,
         Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -66,8 +65,9 @@ public class MainActivity extends AppCompatActivity {
 
         Intent newIntent = new Intent(this, ActionSendService.class);
         newIntent.putStringArrayListExtra(ActionSendService.EXTRA_ARG_PATHS, new ArrayList<>(Arrays.asList(path)));
-        newIntent.putExtra(ActionSendService.EXTRA_ARG_URL, url);
         newIntent.putExtra(ActionSendService.EXTRA_ARG_MODE, "DESKTOP");
+        newIntent.putExtra(ActionSendService.EXTRA_ARG_PASSWORD_DIGEST, "password");
+        newIntent.putExtra(ActionSendService.EXTRA_ARG_PORT, 12345);
         startService(newIntent);
     }
 
@@ -90,8 +90,9 @@ public class MainActivity extends AppCompatActivity {
 
         Intent newIntent = new Intent(this, ActionSendService.class);
         newIntent.putStringArrayListExtra(ActionSendService.EXTRA_ARG_PATHS, paths);
-        newIntent.putExtra(ActionSendService.EXTRA_ARG_URL, url);
         newIntent.putExtra(ActionSendService.EXTRA_ARG_MODE, "DESKTOP");
+        newIntent.putExtra(ActionSendService.EXTRA_ARG_PASSWORD_DIGEST, "password");
+        newIntent.putExtra(ActionSendService.EXTRA_ARG_PORT, 12345);
         startService(newIntent);
     }
 
