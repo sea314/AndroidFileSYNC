@@ -6,24 +6,9 @@
 namespace u8conv {
 using namespace std;
 
-int GetPrivateProfileInt(u8string appName, u8string keyName, int defaultInt, u8string fileName){
-	return ::GetPrivateProfileIntA((LPCSTR)appName.c_str(), (LPCSTR)keyName.c_str(), defaultInt, (LPCSTR)fileName.c_str());
-}
-
-u8string GetPrivateProfileString(u8string appName, u8string keyName, u8string defaultStr, u8string fileName) {
-	char8_t* buffer = nullptr;
-	int bufferSize = 1000;
-	DWORD size = bufferSize - 1;
-	for (;bufferSize == size - 1; bufferSize *= 2) {
-		delete[] buffer;
-		buffer = new char8_t[bufferSize];
-		size = GetPrivateProfileStringA((LPCSTR)appName.c_str(), (LPCSTR)keyName.c_str(), (LPCSTR)defaultStr.c_str(), (LPSTR)buffer, bufferSize, (LPCSTR)fileName.c_str());
-	}
-	u8string str(buffer);
-	delete[] buffer;
-	return str;
-}
-
-
-
+[[nodiscard]] int GetPrivateProfileInt(const u8string& appName, const u8string& keyName, int defaultInt, const u8string& fileName);
+[[nodiscard]] u8string GetPrivateProfileString(const u8string& appName, const u8string& keyName, const u8string& defaultStr, const u8string& fileName);
+BOOL WritePrivateProfileString(const u8string& appName, const u8string& keyName, const u8string& value, const u8string& filename);
+BOOL WritePrivateProfileInt(const u8string& appName, const u8string& keyName, int value, const u8string& filename);
+LPCSTR conv(const u8string& str);
 }
