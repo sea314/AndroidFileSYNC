@@ -1,7 +1,11 @@
 #pragma once
+#include <Shlobj.h>
 #include <windows.h>
 #include <string>
 #include <filesystem>
+#include <vector>
+
+#pragma comment(lib,"Shell32.lib")
 
 namespace u8conv {
 using namespace std;
@@ -22,4 +26,10 @@ template <typename T>
 }
 
 [[nodiscard]] path GetModuleFileName();
+[[nodiscard]] path GetCurrentDirectory();
+
+[[nodiscard]] vector<path> DragQueryFile(HDROP hDrop);
+[[nodiscard]] path OpenFolderDialog(HWND hWnd, const path& defaultPath);
+[[nodiscard]] wstring Utf8ToWstr(const u8string& str);
+[[nodiscard]] u8string WstrToUtf8(const wstring& str);
 }

@@ -11,6 +11,7 @@
 using namespace std;
 using namespace u8conv;
 using namespace Encryption;
+using namespace std::filesystem;
 
 ServerMgr server;
 Config config;
@@ -21,7 +22,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_  HINSTANCE hPrevInst, _In_ LPS
 {
 	config.Load();
 	u8string commandLine = (char8_t*)GetCommandLineA();
-	if (commandLine.find_first_of(u8"autostartup")) {
+	if (commandLine.ends_with(u8"autostartup")) {
 		if (config.autoRun) {
 			server.run(config);
 		}
@@ -43,12 +44,13 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 	case WM_INITDIALOG:
 		EnableWindow(GetDlgItem(hDlg, IDC_BUTTON_SERVER_RUN), !server.isRunning());
 		EnableWindow(GetDlgItem(hDlg, IDC_BUTTON_SERVER_STOP), server.isRunning());
-		SetWindowTextA(hDlg, cstr(config.fileName.u8string()));
 
 		SetDlgItemInt(hDlg, IDC_EDIT_PORT, config.port, FALSE);
 		SetDlgItemTextA(hDlg, IDC_EDIT_PASSWORD, "****");
 		Button_SetCheck(GetDlgItem(hDlg, IDC_CHECK_AUTOSTARTUP), config.autoRun);
 		SetDlgItemTextA(hDlg, IDC_EDIT_PATH, cstr(config.saveDir));
+
+
 
 		SetTimer(hDlg, 0, 100 ,NULL);
 		return TRUE;
@@ -74,6 +76,15 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 			SendMessageA(GetDlgItem(hDlg, IDC_EDIT_LOG), EM_SETSEL, (WPARAM)log.length(), (LPARAM)log.length());
 		}
 
+		return TRUE;
+	}
+
+	case WM_DROPFILES:
+	{
+		vector<path> files = DragQueryFile((HDROP)wp);
+		if (files.size() > 0 && is_directory(files[0])) {
+			SetDlgItemTextA(hDlg, IDC_EDIT_PATH, cstr(files[0].u8string()));
+		}
 		return TRUE;
 	}
 
@@ -120,8 +131,11 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 		}
 
 		case IDC_BUTTON_PATH:
-
+		{
+			path dirPath = OpenFolderDialog(hDlg, u8"");
+			SetDlgItemTextA(hDlg, IDC_EDIT_PATH, cstr(dirPath.u8string()));
 			return TRUE;
+		}
 		}
 	}
 

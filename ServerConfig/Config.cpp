@@ -15,7 +15,7 @@ void Config::Load() {
 	port = GetPrivateProfileInt(u8"Connection", u8"Port", 12345, fileName);
 	passwordDigest = GetPrivateProfileString(u8"Connection", u8"PasswordDigest", u8"", fileName);
 	autoRun = GetPrivateProfileInt(u8"Server", u8"AutoRun", 0, fileName);
-	saveDir = GetPrivateProfileString(u8"Server", u8"SaveDir", u8"Android", fileName);
+	saveDir = GetPrivateProfileString(u8"Server", u8"SaveDir", (GetModuleFileName().parent_path() / u8"Android").u8string(), fileName);
 }
 
 

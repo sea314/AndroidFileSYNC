@@ -25,13 +25,17 @@ void ServerMgr::run(Config config) {
 	CloseHandle(hWritePipeTmp);
 
 	// ‹N“®
-	u8string commandLine = u8"Server.exe";
-	commandLine += u8" ";
+	path serverPath = GetModuleFileName().parent_path() / u8"Server.exe";
+
+	u8string commandLine = u8"\"";
+	commandLine += serverPath.u8string();
+	commandLine += u8"\" ";
 	commandLine += to_u8string(config.port);
 	commandLine += u8" ";
 	commandLine += config.passwordDigest;
-	commandLine += u8" ";
+	commandLine += u8" \"";
 	commandLine += config.saveDir;
+	commandLine += u8"\"";
 
 	STARTUPINFOA startupInfo;
 	PROCESS_INFORMATION processInfo;
@@ -94,13 +98,23 @@ void ServerMgr::logRead() {
 	DWORD readBytes;
 	while (ReadFile(hReadPipe, buffer, 1000, &readBytes, NULL)) {
 		tmp = u8string(buffer, readBytes);
-		int pos;
+		int pos = 0;
 
-		tmp.find_first_of(u8"\n");
-
+		// LF‚ðCR+LF‚É•ÏŠ·
+		while (1) {
+			pos = tmp.find_first_of(u8"\n", pos);
+			if (pos == tmp.npos) {		// ‚à‚¤‰üs‚È‚µ
+				break;
+			}
+			if (pos == 0 || tmp[pos - 1] != u8'\r') {	// ‘O‚ª\r‚Å‚Í‚È‚¢
+				tmp.insert(pos, u8"\r");
+				pos++;
+			}
+			pos++;
+		}
+		
 		lock_guard lock(mtx);
 		serverLog += tmp;
-		serverLog += u8"\r\n";
 		while (serverLog.size() > 100000) {
 			size_t i = serverLog.find_first_of(u8"\n");
 			if (i == u8string::npos) { break; }
