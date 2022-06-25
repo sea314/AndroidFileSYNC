@@ -15,26 +15,58 @@ using namespace std::filesystem;
 
 ServerMgr server;
 Config config;
+u8string uniqueStr;
+
 
 INT_PTR CALLBACK DialogProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
 int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_  HINSTANCE hPrevInst, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
+	bool visible = true;
+	uniqueStr = u8"AndroidFileSYNC";
+
+	// 多重起動チェック
+	HANDLE hMSP = CreateMutexA(NULL, TRUE, cstr(uniqueStr));
+
+	if (GetLastError() == ERROR_ALREADY_EXISTS) {
+		// 既存プロセスに通知
+		GlobalAddAtomA(cstr(uniqueStr));
+
+		if (hMSP != NULL) {
+			ReleaseMutex(hMSP);
+			CloseHandle(hMSP);
+		}
+		return 0;
+	}
+
 	config.Load();
 	u8string commandLine = (char8_t*)GetCommandLineA();
 	if (commandLine.ends_with(u8"autostartup")) {
 		if (config.autoRun) {
 			server.run(config);
+			visible = false;
 		}
 	}
 
 	while (1) {
-		DialogBoxW(hInst, MAKEINTRESOURCEW(IDD_DIALOG1), NULL, DialogProc);
-		config.Save();
-
+		if (visible) {
+			DialogBoxW(hInst, MAKEINTRESOURCEW(IDD_DIALOG1), NULL, DialogProc);
+			config.Save();
+			visible = false;
+		}
 		if (!server.isRunning()) {
+			if (hMSP != NULL) {
+				ReleaseMutex(hMSP);
+				CloseHandle(hMSP);
+			}
 			return 0;
 		}
+
+		if (GlobalFindAtomA(cstr(uniqueStr))) {
+			GlobalDeleteAtom(GlobalFindAtomA(cstr(uniqueStr)));
+			visible = true;
+		}
+		Sleep(100);
 	}
 }
 
@@ -76,6 +108,10 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 			SendMessageA(GetDlgItem(hDlg, IDC_EDIT_LOG), EM_SETSEL, (WPARAM)log.length(), (LPARAM)log.length());
 		}
 
+		if (GlobalFindAtomA(cstr(uniqueStr))) {
+			GlobalDeleteAtom(GlobalFindAtomA(cstr(uniqueStr)));
+			SetForegroundWindow(hDlg);
+		}
 		return TRUE;
 	}
 
