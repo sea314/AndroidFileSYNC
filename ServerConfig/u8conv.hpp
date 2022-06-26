@@ -32,4 +32,5 @@ template <typename T>
 [[nodiscard]] path OpenFolderDialog(HWND hWnd, const path& defaultPath);
 [[nodiscard]] wstring Utf8ToWstr(const u8string& str);
 [[nodiscard]] u8string WstrToUtf8(const wstring& str);
+[[nodiscard]] vector<char8_t> makeNullSeparetedString(const vector<u8string>& strs);
 }

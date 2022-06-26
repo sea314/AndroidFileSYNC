@@ -91,9 +91,9 @@ func writeFile(param PostFileParam) error {
 		filepath = userData.HomeDir + "/Desktop/" + split_path[len(split_path)-1]
 
 	case "BACKUP":
-		dir := userData.HomeDir + "/AndroidFileSYNC" + strings.Join(split_path[0:len(split_path)-1], "/")
+		dir := os.Getenv("AndroidFileSYNC BackupDirectory")
 		os.MkdirAll(dir, os.ModeDir)
-		filepath = userData.HomeDir + "/AndroidFileSYNC" + param.path
+		filepath = dir + "/" + param.path
 	}
 
 	var file *os.File

@@ -15,7 +15,7 @@ void Config::Load() {
 	port = GetPrivateProfileInt(u8"Connection", u8"Port", 12345, fileName);
 	passwordDigest = GetPrivateProfileString(u8"Connection", u8"PasswordDigest", u8"", fileName);
 	autoRun = GetPrivateProfileInt(u8"Server", u8"AutoRun", 0, fileName);
-	saveDir = GetPrivateProfileString(u8"Server", u8"SaveDir", (GetModuleFileName().parent_path() / u8"Android").u8string(), fileName);
+	backupDir = GetPrivateProfileString(u8"Server", u8"BackupDir", (GetModuleFileName().parent_path() / u8"Android").u8string(), fileName);
 }
 
 
@@ -24,7 +24,7 @@ void Config::Save() {
 	WritePrivateProfileInt(u8"Connection", u8"Port", port, fileName);
 	WritePrivateProfileString(u8"Connection", u8"PasswordDigest", passwordDigest, fileName);
 	WritePrivateProfileInt(u8"Server", u8"AutoRun", autoRun, fileName);
-	WritePrivateProfileString(u8"Server", u8"SaveDir", saveDir, fileName);
+	WritePrivateProfileString(u8"Server", u8"BackupDir", backupDir, fileName);
 	DWORD b = GetLastError();
 
 	u8string commandLine = u8"\"" + GetModuleFileName().u8string() + u8"\"";

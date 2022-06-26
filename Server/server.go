@@ -3,13 +3,22 @@ package main
 import (
 	"Server/connection"
 	"Server/handler"
+	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
 
 func main() {
-	go connection.ClientConnectionRecieve(12345, "password")
+	for _, env := range os.Environ() {
+		fmt.Println(env)
+	}
+	port, _ := strconv.Atoi(os.Getenv("AndroidFileSYNC Port"))
+	passwordDigest := os.Getenv("AndroidFileSYNC PasswordDigest")
+
+	go connection.ClientConnectionRecieve(port, passwordDigest)
 
 	e := echo.New()
 
@@ -29,5 +38,5 @@ func main() {
 		return c.String(http.StatusOK, "pong\n")
 	})
 
-	e.Logger.Fatal(e.Start(":12345"))
+	e.Logger.Fatal(e.Start(":" + strconv.Itoa(port)))
 }

@@ -163,3 +163,23 @@ u8string u8conv::WstrToUtf8(const wstring& str)
 	::WideCharToMultiByte(CP_UTF8, 0, str.c_str(), -1, (LPSTR)buffer, bufferSize, NULL, NULL);
 	return u8string(buffer);
 }
+
+vector<char8_t> u8conv::makeNullSeparetedString(const vector<u8string>& strs)
+{
+	size_t len = 0;
+	for (const auto& s : strs) {
+		len += s.length();
+		len++;
+	}
+	len++;
+
+	vector<char8_t> buffer(len, u8'\0');
+	len = 0;
+
+	for (const auto& s : strs) {
+		memcpy(buffer.data()+len, s.data(), s.length());
+		len += s.length();
+		len++;
+	}
+	return buffer;
+}

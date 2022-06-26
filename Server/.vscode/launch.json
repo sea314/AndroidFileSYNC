@@ -3,5 +3,17 @@
     // 既存の属性の説明をホバーして表示します。
     // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": []
+    "configurations": [
+        {
+            "name": "Debug",
+            "type": "go",
+            "request": "launch",
+            "program": "${workspaceRoot}\\server.go",
+            "env": {
+                "AndroidFileSYNC Port": "12345",
+                "AndroidFileSYNC PasswordDigest": "password",
+                "AndroidFileSYNC BackupDirectory": "${workspaceRoot}/Android"
+            }
+        }
+    ]
 }

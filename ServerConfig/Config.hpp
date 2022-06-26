@@ -10,7 +10,7 @@ struct Config {
 	int port;
 	u8string passwordDigest;
 	int autoRun;
-	u8string saveDir;
+	u8string backupDir;
 
 	Config();
 	void Load();

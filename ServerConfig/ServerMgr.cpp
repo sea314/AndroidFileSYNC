@@ -30,12 +30,6 @@ void ServerMgr::run(Config config) {
 	u8string commandLine = u8"\"";
 	commandLine += serverPath.u8string();
 	commandLine += u8"\" ";
-	commandLine += to_u8string(config.port);
-	commandLine += u8" ";
-	commandLine += config.passwordDigest;
-	commandLine += u8" \"";
-	commandLine += config.saveDir;
-	commandLine += u8"\"";
 
 	STARTUPINFOA startupInfo;
 	PROCESS_INFORMATION processInfo;
@@ -45,6 +39,10 @@ void ServerMgr::run(Config config) {
 	startupInfo.hStdOutput = hWritePipe;
 	startupInfo.hStdError = hWritePipe;
 	ZeroMemory(&processInfo, sizeof(processInfo));
+
+	SetEnvironmentVariableA("AndroidFileSYNC Port", cstr(to_u8string(config.port)));
+	SetEnvironmentVariableA("AndroidFileSYNC PasswordDigest", cstr(config.passwordDigest));
+	SetEnvironmentVariableA("AndroidFileSYNC BackupDirectory", cstr(config.backupDir));
 
 	CreateProcessA(NULL, (LPSTR)commandLine.data(), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &startupInfo, &processInfo);
 	CloseHandle(processInfo.hThread);

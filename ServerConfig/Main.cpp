@@ -80,7 +80,7 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 		SetDlgItemInt(hDlg, IDC_EDIT_PORT, config.port, FALSE);
 		SetDlgItemTextA(hDlg, IDC_EDIT_PASSWORD, "****");
 		Button_SetCheck(GetDlgItem(hDlg, IDC_CHECK_AUTOSTARTUP), config.autoRun);
-		SetDlgItemTextA(hDlg, IDC_EDIT_PATH, cstr(config.saveDir));
+		SetDlgItemTextA(hDlg, IDC_EDIT_PATH, cstr(config.backupDir));
 
 
 
@@ -131,7 +131,7 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 			config.port = GetDlgItemInt(hDlg, IDC_EDIT_PORT, NULL, FALSE);
 			u8string password = GetDlgItemText(hDlg, IDC_EDIT_PASSWORD);
 			config.autoRun = Button_GetState(GetDlgItem(hDlg, IDC_CHECK_AUTOSTARTUP)) == BST_CHECKED;
-			config.saveDir = GetDlgItemText(hDlg, IDC_EDIT_PATH);
+			config.backupDir = GetDlgItemText(hDlg, IDC_EDIT_PATH);
 			if (password != u8"****") {
 				config.passwordDigest = sha256ToBase64String(password.c_str(), password.size());
 			}
@@ -148,7 +148,7 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 			config.port = GetDlgItemInt(hDlg, IDC_EDIT_PORT, NULL, FALSE);
 			u8string password = GetDlgItemText(hDlg, IDC_EDIT_PASSWORD);
 			config.autoRun = Button_GetState(GetDlgItem(hDlg, IDC_CHECK_AUTOSTARTUP)) == BST_CHECKED;
-			config.saveDir = GetDlgItemText(hDlg, IDC_EDIT_PATH);
+			config.backupDir = GetDlgItemText(hDlg, IDC_EDIT_PATH);
 
 			if (password != u8"****") {
 				config.passwordDigest = sha256ToBase64String(password.c_str(), password.size());
