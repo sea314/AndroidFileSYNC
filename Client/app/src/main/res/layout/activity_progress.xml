@@ -6,4 +6,15 @@
     android:layout_height="match_parent"
     tools:context=".ProgressActivity">
 
+
+    <ProgressBar android:id="@+id/progressbar"
+        android:layout_height="20dp"
+        android:layout_width="match_parent"
+        android:layout_margin="30dp"
+        android:indeterminate="false"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+    />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

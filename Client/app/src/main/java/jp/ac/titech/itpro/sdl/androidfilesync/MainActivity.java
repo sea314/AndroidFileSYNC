@@ -9,12 +9,19 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
+    private final static String KEY_PORT = "KEY_PORT";
+    private final static String KEY_PASSWORD = "KEY_PASSWORD";
+    private EditText portEdit;
+    private EditText passwordEdit;
+
     String necessaryPermissions[] = {
         Manifest.permission.INTERNET,
         Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -25,6 +32,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        portEdit = findViewById(R.id.port_edit);
+        passwordEdit = findViewById(R.id.password_edit);
+
+        if (savedInstanceState != null) {
+            portEdit.setText(savedInstanceState.getString(KEY_PORT));
+            passwordEdit.setText(savedInstanceState.getString(KEY_PASSWORD));
+        }
+
 
         Intent intent = getIntent();
         String action = intent.getAction();
@@ -49,6 +64,19 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void onClickSendFile(View v){
+        Log.d(TAG, "onClickSendFile in " + Thread.currentThread());
+    }
+
+    public void onClickBackup(View v){
+        Log.d(TAG, "onClickBackup in " + Thread.currentThread());
+    }
+
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(KEY_PORT, portEdit.getText().toString());
+        outState.putString(KEY_PASSWORD, passwordEdit.getText().toString());
+    }
 
     void handleSendFile(Intent intent) {
         Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
@@ -95,7 +123,6 @@ public class MainActivity extends AppCompatActivity {
         newIntent.putExtra(ActionSendService.EXTRA_ARG_PORT, 12345);
         startService(newIntent);
     }
-
 
     int CheckNecessaryPermissions(){
         int result[] = new int[necessaryPermissions.length];
