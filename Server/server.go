@@ -4,7 +4,6 @@ import (
 	"Server/connection"
 	"Server/handler"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 
@@ -25,18 +24,6 @@ func main() {
 	e.POST("/file", handler.PostFileHandler)
 
 	e.GET("/filelist", handler.GetFileListHandler)
-
-	e.GET("/hello", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello World.\n")
-	})
-
-	e.GET("/sea314", func(c echo.Context) error {
-		return c.String(http.StatusOK, "sea314(しーさんいちよん)です。\n")
-	})
-
-	e.GET("/ping", func(c echo.Context) error {
-		return c.String(http.StatusOK, "pong\n")
-	})
 
 	e.Logger.Fatal(e.Start(":" + strconv.Itoa(port)))
 }

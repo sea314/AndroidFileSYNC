@@ -39,8 +39,21 @@ public class ActionSendService extends IntentService {
         int port = intent.getIntExtra(EXTRA_ARG_PORT, 0);
 
         connection = new ConnectServer(getApplicationContext(), password_digest, port);
-        if(connection.connect() != 0){
-            Log.i(TAG, "サーバー接続失敗");
+        int connErr = connection.connect();
+
+        if(connErr != ConnectServer.ERROR_SUCCESS){
+            Log.e(TAG, "サーバー接続失敗");
+            switch (connErr){
+                case ConnectServer.ERROR_AUTHORIZATION:
+                    // todo:broadcastで通知
+                    break;
+                case ConnectServer.ERROR_TIMEOUT:
+                    // todo:broadcastで通知
+                    break;
+                case ConnectServer.ERROR_IO:
+                    // todo:broadcastで通知
+                    break;
+            }
             return;
         }
         Log.i(TAG, connection.getAddress());

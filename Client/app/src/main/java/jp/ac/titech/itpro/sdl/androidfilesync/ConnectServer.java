@@ -28,15 +28,20 @@ import java.nio.charset.StandardCharsets;
 public class ConnectServer {
     private final static String TAG = ConnectServer.class.getSimpleName();
     Context context;
-    String password_digest;
-    String msg_digest;
+    String passwordDigest;
+    String msgDigest;
     int port;
     InetAddress serverAddress;
-    int local_port;
+    int localPort;
 
-    public ConnectServer(Context context, String password_digest, int port){
+    public final static int ERROR_SUCCESS = 0;
+    public final static int ERROR_AUTHORIZATION = -1;
+    public final static int ERROR_TIMEOUT = -2;
+    public final static int ERROR_IO = -3;
+
+    public ConnectServer(Context context, String passwordDigest, int port){
         this.context = context;
-        this.password_digest = password_digest;
+        this.passwordDigest = passwordDigest;
         this.port = port;
     }
 
@@ -61,9 +66,9 @@ public class ConnectServer {
 
     void sendBroadcast() {
         long unixTime = System.currentTimeMillis();
-        String passWithTime = String.format("%d:%s", unixTime, password_digest);
-        msg_digest = Encryption.sha256EncodeToString(passWithTime.getBytes(StandardCharsets.UTF_8));
-        String messageStr =  String.format("%d:%s", unixTime, msg_digest);
+        String passWithTime = String.format("%d:%s", unixTime, passwordDigest);
+        msgDigest = Encryption.sha256EncodeToString(passWithTime.getBytes(StandardCharsets.UTF_8));
+        String messageStr =  String.format("%d:%s", unixTime, msgDigest);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -72,9 +77,9 @@ public class ConnectServer {
             DatagramSocket socket = new DatagramSocket();
             socket.setBroadcast(true);
             byte[] sendData = messageStr.getBytes(StandardCharsets.UTF_8);
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, getBroadcastAddress(context), 12345);
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, getBroadcastAddress(context), port);
             socket.send(sendPacket);
-            local_port = socket.getLocalPort();
+            localPort = socket.getLocalPort();
             Log.i(TAG,  "Broadcast packet sent to: " + getBroadcastAddress(context).getHostAddress());
         } catch (SocketException e) {
             e.printStackTrace();
@@ -96,30 +101,29 @@ public class ConnectServer {
 
     int receiveBroadCastResponse(){
         try {
-            ServerSocket serverSocket = new ServerSocket(local_port);
+            ServerSocket serverSocket = new ServerSocket(localPort);
             serverSocket.setSoTimeout(3000);
             Socket socket = serverSocket.accept();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String data = reader.readLine();
 
-            if(!data.equals(Encryption.sha256EncodeToString(msg_digest+password_digest))){
+            if(!data.equals(Encryption.sha256EncodeToString(msgDigest+passwordDigest))){
                 Log.e(TAG, "auth error");
-                msg_digest = null;
-
-                return -1;
+                msgDigest = null;
+                return ERROR_AUTHORIZATION;
             }
 
             serverAddress = socket.getInetAddress();
         } catch (SocketTimeoutException e){
             e.printStackTrace();
-            Log.i(TAG, "receiveBroadCastResponse: タイムアウト");
-            return -2;
+            Log.e(TAG, "receiveBroadCastResponse: タイムアウト");
+            return ERROR_TIMEOUT;
         } catch (IOException e) {
             e.printStackTrace();
-            Log.i(TAG, "receiveBroadCastResponse: IOエラー");
-            return -3;
+            Log.e(TAG, "receiveBroadCastResponse: IOエラー");
+            return ERROR_IO;
         }
-        return 0;
+        return ERROR_SUCCESS;
     }
 }

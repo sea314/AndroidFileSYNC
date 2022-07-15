@@ -11,7 +11,7 @@
             "program": "${workspaceRoot}\\server.go",
             "env": {
                 "AndroidFileSYNC Port": "12345",
-                "AndroidFileSYNC PasswordDigest": "password",
+                "AndroidFileSYNC PasswordDigest": "XohImNooBHFR0OVvjcYpJ3NgPQ1qq73WKhHvch0VQtg=",
                 "AndroidFileSYNC BackupDirectory": "${workspaceRoot}/Android"
             }
         }
