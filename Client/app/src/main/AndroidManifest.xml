@@ -12,8 +12,12 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.AndroidFileSYNC">
+        android:theme="@style/Theme.AndroidFileSYNC"
+        android:usesCleartextTraffic="true">
+        <service
+            android:name=".BackupService"
+            android:exported="false"></service>
+
         <activity
             android:name=".ProgressActivity"
             android:exported="false" />
@@ -42,7 +46,7 @@
         </activity>
 
         <service
-            android:name=".ActionSendService"
+            android:name=".SendFileService"
             android:exported="false" />
         <service
             android:name=".TestService"

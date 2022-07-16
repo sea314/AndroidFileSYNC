@@ -10,9 +10,6 @@ import (
 	"strings"
 )
 
-type BroadCastParam struct {
-}
-
 func ClientConnectionRecieve(port int, password_digest string) {
 	for _, ip := range getHostIPList() {
 		go broadcastRecieve(ip, port, password_digest)

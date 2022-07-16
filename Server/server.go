@@ -3,7 +3,6 @@ package main
 import (
 	"Server/connection"
 	"Server/handler"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -11,11 +10,10 @@ import (
 )
 
 func main() {
-	for _, env := range os.Environ() {
-		fmt.Println(env)
-	}
 	port, _ := strconv.Atoi(os.Getenv("AndroidFileSYNC Port"))
 	passwordDigest := os.Getenv("AndroidFileSYNC PasswordDigest")
+	directory := os.Getenv("AndroidFileSYNC BackupDirectory")
+	os.MkdirAll(directory, 0777)
 
 	go connection.ClientConnectionRecieve(port, passwordDigest)
 

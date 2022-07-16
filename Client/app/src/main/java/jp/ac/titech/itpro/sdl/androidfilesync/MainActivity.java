@@ -164,11 +164,11 @@ public class MainActivity extends AppCompatActivity {
             paths.add(path);
         }
 
-        Intent newIntent = new Intent(this, ActionSendService.class);
-        newIntent.putStringArrayListExtra(ActionSendService.EXTRA_ARG_PATHS, paths);
-        newIntent.putExtra(ActionSendService.EXTRA_ARG_MODE, "DESKTOP");
-        newIntent.putExtra(ActionSendService.EXTRA_ARG_PASSWORD_DIGEST, passwordDigest);
-        newIntent.putExtra(ActionSendService.EXTRA_ARG_PORT, port);
+        Intent newIntent = new Intent(this, SendFileService.class);
+        newIntent.putStringArrayListExtra(SendFileService.EXTRA_ARG_PATHS, paths);
+        newIntent.putExtra(SendFileService.EXTRA_ARG_MODE, ConnectServer.MODE_DESKTOP);
+        newIntent.putExtra(SendFileService.EXTRA_ARG_PASSWORD_DIGEST, passwordDigest);
+        newIntent.putExtra(SendFileService.EXTRA_ARG_PORT, port);
         startService(newIntent);
     }
 
