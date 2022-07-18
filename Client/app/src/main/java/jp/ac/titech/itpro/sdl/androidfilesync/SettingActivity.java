@@ -119,11 +119,7 @@ public class SettingActivity extends AppCompatActivity {
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-
-        //コンテキストメニューの設定
-        menu.add(0, CONTEXT_MENU_BACKUP_ADD, 0, "追加");
-        menu.add(0, CONTEXT_MENU_BACKUP_DELETE, 0, "除去");
+        getMenuInflater().inflate(R.menu.context_menu, menu);
     }
 
     public boolean onContextItemSelected(MenuItem item) {
@@ -131,10 +127,10 @@ public class SettingActivity extends AppCompatActivity {
         AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
 
         switch (item.getItemId()) {
-            case CONTEXT_MENU_BACKUP_ADD:
+            case R.id.add_backup:
                 onClickAddBackup(item.getActionView());
                 return true;
-            case CONTEXT_MENU_BACKUP_DELETE:
+            case  R.id.delete_backup:
                 backupPaths.remove(info.position);
                 backupPathsAdapter.remove(backupPathsAdapter.getItem(info.position));
                 return true;

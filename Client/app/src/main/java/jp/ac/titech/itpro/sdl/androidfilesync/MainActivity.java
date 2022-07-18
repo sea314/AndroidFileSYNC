@@ -14,10 +14,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Pair;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 
@@ -83,11 +86,6 @@ public class MainActivity extends AppCompatActivity {
         config.Load(this);
     }
 
-    public void onClickSetting(View v){
-        Log.d(TAG, "onClickSetting in " + Thread.currentThread());
-        SettingActivity.startSettingActivity(this);
-    }
-
     public void onClickSendFile(View v){
         Log.d(TAG, "onClickSendFile in " + Thread.currentThread());
         if(CheckNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
@@ -112,6 +110,26 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, necessaryPermissions, 1);
         }
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        Log.d(TAG, "onCreateOptionsMenu");
+        getMenuInflater().inflate(R.menu.option_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        Log.d(TAG, "onOptionsItemSelected");
+        switch (item.getItemId()) {
+            case R.id.menu_option:
+                SettingActivity.startSettingActivity(this);
+                break;
+        }
+        invalidateOptionsMenu();
+        return super.onOptionsItemSelected(item);
+    }
+
 
     void handleSendFile(Intent intent) {
         Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
