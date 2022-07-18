@@ -64,16 +64,27 @@
         app:layout_constraintTop_toBottomOf="@+id/port_edit"
         />
 
+    <TextView
+        android:id="@+id/backup_view"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/password_edit"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:textSize="16sp"
+        android:text="@string/backup_view_label"
+    />
 
     <ListView
         android:id="@+id/backup_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:background="#DDDDDD"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/password_edit"
+        app:layout_constraintTop_toBottomOf="@+id/backup_view"
         app:layout_constraintBottom_toTopOf="@+id/add_backup_button"
-        />
+    />
 
     <Button
         android:id="@+id/add_backup_button"
@@ -87,23 +98,8 @@
         android:visibility="visible"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/delete_backup_button"
-        app:layout_constraintBottom_toTopOf="@+id/ok_button"
-    />
-
-    <Button
-        android:id="@+id/delete_backup_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:onClick="onClickDeleteBackup"
-        android:text="@string/delete_backup_button_label"
-        android:textSize="16sp"
-        android:visibility="visible"
-        app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/add_backup_button"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/cancel_button"
+        app:layout_constraintBottom_toTopOf="@+id/ok_button"
     />
 
     <Button
@@ -120,6 +116,7 @@
         app:layout_constraintEnd_toStartOf="@+id/cancel_button"
         app:layout_constraintBottom_toBottomOf="parent"
     />
+
     <Button
         android:id="@+id/cancel_button"
         android:layout_width="0dp"

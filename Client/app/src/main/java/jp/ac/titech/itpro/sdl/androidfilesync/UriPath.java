@@ -27,7 +27,7 @@ public class UriPath {
                 if ("primary".equalsIgnoreCase(type)) {
                     return Environment.getExternalStorageDirectory() + "/" + split[1];
                 }else {
-                    return "/stroage/" + type +  "/" + split[1];
+                    return "/storage/" + type +  "/" + split[1];
                 }
             }else if ("com.android.providers.downloads.documents".equals(
                     uri.getAuthority())) {// DownloadsProvider
@@ -75,6 +75,4 @@ public class UriPath {
         }
         return null;
     }
-
-
 }

@@ -7,6 +7,7 @@
     <string name="port_edit_label">サーバーと同一のものを設定</string>
     <string name="password_view_label">パスワード</string>
     <string name="password_edit_label">サーバーと同一のものを設定</string>
+    <string name="backup_view_label">バックアップ対象フォルダ</string>
     <string name="add_backup_button_label">追加</string>
     <string name="delete_backup_button_label">除外</string>
     <string name="ok_button_label">OK</string>

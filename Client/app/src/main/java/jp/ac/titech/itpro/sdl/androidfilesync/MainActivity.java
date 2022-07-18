@@ -78,10 +78,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onStop()
-    {
-        super.onStop();
-        config.Save(getApplicationContext());
+    public void onResume() {
+        super.onResume();
+        config.Load(this);
     }
 
     public void onClickSetting(View v){
