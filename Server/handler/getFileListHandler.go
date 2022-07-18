@@ -6,15 +6,18 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 )
 
+type Files struct {
+	FileList []FileInfo `json:"fileList"`
+}
 type FileInfo struct {
-	path         string
-	fileSize     uint64
-	lastModified uint64
+	Path         string `json:"path"`
+	FileSize     uint64 `json:"fileSize"`
+	LastModified uint64 `json:"lastModified"`
+	IsDir        bool   `json:"isDir"`
 }
 
 func GetFileListHandler(c echo.Context) error {
@@ -24,12 +27,25 @@ func GetFileListHandler(c echo.Context) error {
 	filepath.Walk(directory,
 		func(path string, info fs.FileInfo, err error) error {
 			if path != directory {
-				path = strings.TrimLeft(path, directory)
-				fileList = append(fileList, FileInfo{path: path, fileSize: uint64(info.Size()), lastModified: uint64(info.ModTime().UnixMilli())})
+				relativePath, err := filepath.Rel(directory, path)
+				if err != nil {
+					fmt.Print("path parse error")
+					fmt.Print(err.Error())
+					return nil
+				}
+
+				fileList = append(fileList, FileInfo{
+					Path:         relativePath,
+					FileSize:     uint64(info.Size()),
+					LastModified: uint64(info.ModTime().UnixMilli()),
+					IsDir:        info.IsDir(),
+				})
 			}
 
 			return nil
 		})
-	fmt.Println(fileList)
-	return c.String(http.StatusOK, "OK")
+
+	files := Files{FileList: fileList}
+	fmt.Println(files)
+	return c.JSON(http.StatusOK, files)
 }

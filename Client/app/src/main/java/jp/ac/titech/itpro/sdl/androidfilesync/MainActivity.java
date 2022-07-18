@@ -26,10 +26,7 @@ import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
-    private final static String KEY_PORT = "KEY_PORT";
-    private final static String KEY_PASSWORD = "KEY_PASSWORD";
-    private EditText portEdit;
-    private EditText passwordEdit;
+
     private Config config = new Config();
 
     String necessaryPermissions[] = {
@@ -58,28 +55,12 @@ public class MainActivity extends AppCompatActivity {
             });
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        portEdit = findViewById(R.id.port_edit);
-        passwordEdit = findViewById(R.id.password_edit);
         config.Load(getApplicationContext());
-
-        if (savedInstanceState != null) {
-            portEdit.setText(savedInstanceState.getString(KEY_PORT));
-            passwordEdit.setText(savedInstanceState.getString(KEY_PASSWORD));
-        }
-        else{
-            portEdit.setText(String.valueOf(config.port));
-
-            if(config.passwordDigest.equals("")){
-                passwordEdit.setText("");
-            }
-            else{
-                passwordEdit.setText("****");
-            }
-        }
 
         Intent intent = getIntent();
         String action = intent.getAction();
@@ -100,18 +81,16 @@ public class MainActivity extends AppCompatActivity {
     public void onStop()
     {
         super.onStop();
-
-        config.port = Integer.parseInt(portEdit.getText().toString());
-
-        String password = passwordEdit.getText().toString();
-        if(!password.equals("****")){
-            config.passwordDigest = Encryption.sha256EncodeToString(password);
-        }
         config.Save(getApplicationContext());
     }
 
+    public void onClickSetting(View v){
+        Log.d(TAG, "onClickSetting in " + Thread.currentThread());
+        SettingActivity.startSettingActivity(this);
+    }
 
     public void onClickSendFile(View v){
+        Log.d(TAG, "onClickSendFile in " + Thread.currentThread());
         if(CheckNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType("*/*");
@@ -119,7 +98,6 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 
             selectFileActivity.launch(Intent.createChooser(intent, "送信するファイルを指定"));
-            Log.d(TAG, "onClickSendFile in " + Thread.currentThread());
         }
         else{
             ActivityCompat.requestPermissions(this, necessaryPermissions, 1);
@@ -127,21 +105,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onClickBackup(View v){
+        Log.d(TAG, "onClickBackup in " + Thread.currentThread());
         if(CheckNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "onClickBackup in " + Thread.currentThread());
+            SendFileService.startActionBackup(this, null, config.port, config.passwordDigest);
         }
         else{
             ActivityCompat.requestPermissions(this, necessaryPermissions, 1);
         }
     }
-
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putString(KEY_PORT, portEdit.getText().toString());
-        outState.putString(KEY_PASSWORD, passwordEdit.getText().toString());
-    }
-
-
 
     void handleSendFile(Intent intent) {
         Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
@@ -164,13 +135,23 @@ public class MainActivity extends AppCompatActivity {
             paths.add(path);
         }
 
-        Intent newIntent = new Intent(this, SendFileService.class);
-        newIntent.putStringArrayListExtra(SendFileService.EXTRA_ARG_PATHS, paths);
-        newIntent.putExtra(SendFileService.EXTRA_ARG_MODE, ConnectServer.MODE_DESKTOP);
-        newIntent.putExtra(SendFileService.EXTRA_ARG_PASSWORD_DIGEST, passwordDigest);
-        newIntent.putExtra(SendFileService.EXTRA_ARG_PORT, port);
-        startService(newIntent);
+        SendFileService.startActionSendFile(this, paths, port, passwordDigest);
     }
+
+    void startBackupService(ArrayList<Uri> uris, int port, String passwordDigest){
+        ArrayList<String> paths = new ArrayList<>();
+        for(Uri uri : uris){
+            String path = UriPath.getPathFromUri(this, uri);
+            if(path == null){
+                Log.e(TAG, "uriをファイル名に変換できません:\""+uri+"\"");
+                continue;
+            }
+            paths.add(path);
+        }
+
+        SendFileService.startActionSendFile(this, paths, port, passwordDigest);
+    }
+
 
     int CheckNecessaryPermissions(){
         int result[] = new int[necessaryPermissions.length];
@@ -182,4 +163,5 @@ public class MainActivity extends AppCompatActivity {
 
         return Arrays.stream(result).allMatch(a -> a==PackageManager.PERMISSION_GRANTED) ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED;
     }
+
 }

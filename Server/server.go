@@ -13,7 +13,7 @@ func main() {
 	port, _ := strconv.Atoi(os.Getenv("AndroidFileSYNC Port"))
 	passwordDigest := os.Getenv("AndroidFileSYNC PasswordDigest")
 	directory := os.Getenv("AndroidFileSYNC BackupDirectory")
-	os.MkdirAll(directory, 0777)
+	os.MkdirAll(directory, os.ModeDir)
 
 	go connection.ClientConnectionRecieve(port, passwordDigest)
 

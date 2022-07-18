@@ -6,62 +6,19 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/port_view"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:gravity="center"
-        android:textSize="16sp"
-        app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/port_edit"
-        app:layout_constraintTop_toTopOf="@+id/port_edit"
-        app:layout_constraintBottom_toBottomOf="@+id/port_edit"
-        android:text="@string/port_view_label"
-    />
-    <EditText
-        android:id="@+id/port_edit"
-        android:layout_width="0dp"
+    <Button
+        android:id="@+id/setting_button"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:inputType="number"
-        android:hint="@string/port_edit_label"
-        android:autofillHints=""
+        android:layout_margin="8dp"
+        android:layout_marginEnd="16dp"
+        android:onClick="onClickSetting"
+        android:text="@string/setting_button_label"
         android:textSize="16sp"
-        app:layout_constraintHorizontal_weight="2"
-        app:layout_constraintHorizontal_chainStyle="packed"
-        app:layout_constraintStart_toEndOf="@+id/port_view"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/password_edit"
+        android:visibility="visible"
+        app:layout_constraintStart_toStartOf="parent"
     />
 
-    <TextView
-        android:id="@+id/password_view"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:gravity="center"
-        android:textSize="16sp"
-        app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/password_edit"
-        app:layout_constraintTop_toTopOf="@+id/password_edit"
-        app:layout_constraintBottom_toBottomOf="@+id/password_edit"
-        android:text="@string/password_view_label"
-    />
-    <EditText
-        android:id="@+id/password_edit"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:inputType="textPassword"
-        android:hint="@string/password_edit_label"
-        android:autofillHints=""
-        android:textSize="16sp"
-        app:layout_constraintHorizontal_weight="2"
-        app:layout_constraintStart_toEndOf="@+id/password_view"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/port_edit"
-        app:layout_constraintBottom_toBottomOf="@+id/backup_button"
-    />
     <Button
         android:id="@+id/send_file_button"
         android:layout_width="wrap_content"
@@ -74,7 +31,6 @@
         android:visibility="visible"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/backup_button"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
     />
 
@@ -89,7 +45,6 @@
         android:textSize="16sp"
         app:layout_constraintStart_toEndOf="@+id/send_file_button"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
     />
 

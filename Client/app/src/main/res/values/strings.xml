@@ -1,9 +1,14 @@
 <resources>
     <string name="app_name">AndroidFileSYNC</string>
+    <string name="setting_button_label">設定</string>
     <string name="send_file_button_label">ファイル送信</string>
     <string name="backup_button_label">バックアップ</string>
     <string name="port_view_label">ポート番号</string>
     <string name="port_edit_label">サーバーと同一のものを設定</string>
     <string name="password_view_label">パスワード</string>
     <string name="password_edit_label">サーバーと同一のものを設定</string>
+    <string name="add_backup_button_label">追加</string>
+    <string name="delete_backup_button_label">除外</string>
+    <string name="ok_button_label">OK</string>
+    <string name="cancel_button_label">キャンセル</string>
 </resources>

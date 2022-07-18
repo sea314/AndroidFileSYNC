@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -79,7 +80,7 @@ func parsePostFileParam(request *http.Request) (PostFileParam, error) {
 }
 
 func writeFile(param PostFileParam) error {
-	var filepath string
+	var filePath string
 	userData, err := user.Current()
 	if err != nil {
 		return errors.New("can't current user information")
@@ -88,39 +89,41 @@ func writeFile(param PostFileParam) error {
 
 	switch param.mode {
 	case "DESKTOP":
-		filepath = userData.HomeDir + "/Desktop/" + split_path[len(split_path)-1]
+		filePath = userData.HomeDir + "/Desktop/" + split_path[len(split_path)-1]
 
 	case "BACKUP":
 		dir := os.Getenv("AndroidFileSYNC BackupDirectory")
-		os.MkdirAll(dir, os.ModeDir)
-		filepath = dir + "/" + param.path
+		filePath = dir + "/" + param.path
+		if param.split == 0 {
+			os.MkdirAll(filepath.Dir(filePath), os.ModeDir)
+		}
 	}
 
 	var file *os.File
 	if param.split == 0 {
 		var err error
-		file, err = os.Create(filepath + ".tmp")
+		file, err = os.Create(filePath + ".tmp")
 		if err != nil {
-			return errors.New("can't create file:" + filepath + ".tmp")
+			return errors.New("can't create file:" + filePath + ".tmp")
 		}
 	} else { // 分割2回目以降
 		var err error
-		file, err = os.OpenFile(filepath+".tmp", os.O_WRONLY|os.O_APPEND, 0666)
+		file, err = os.OpenFile(filePath+".tmp", os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
-			return errors.New("can't open file:" + filepath + ".tmp")
+			return errors.New("can't open file:" + filePath + ".tmp")
 		}
 	}
 	file.Write(param.fileData)
 	file.Close()
 
 	if param.fileSize == 0 {
-		os.Remove(filepath)
-		os.Rename(filepath+".tmp", filepath)
-		w_filepath, err := winAPI.StringToWCharPtr(filepath)
+		os.Remove(filePath)
+		os.Rename(filePath+".tmp", filePath)
+		w_filePath, err := winAPI.StringToWCharPtr(filePath)
 		if err != nil {
-			return errors.New("can't set modified time" + filepath)
+			return errors.New("can't set modified time" + filePath)
 		}
-		hFile, err := syscall.CreateFile(w_filepath, syscall.GENERIC_WRITE, 0, nil, syscall.OPEN_EXISTING, syscall.FILE_ATTRIBUTE_NORMAL, 0)
+		hFile, err := syscall.CreateFile(w_filePath, syscall.GENERIC_WRITE, 0, nil, syscall.OPEN_EXISTING, syscall.FILE_ATTRIBUTE_NORMAL, 0)
 		modifiedTime := winAPI.UnixTimeToFileTime(param.lastModified)
 		syscall.SetFileTime(hFile, nil, nil, &modifiedTime)
 		syscall.CloseHandle(hFile)

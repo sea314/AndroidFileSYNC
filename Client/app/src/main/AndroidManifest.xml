@@ -14,10 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AndroidFileSYNC"
         android:usesCleartextTraffic="true">
-        <service
-            android:name=".BackupService"
-            android:exported="false"></service>
-
+        <activity
+            android:name=".SettingActivity"
+            android:exported="false" />
         <activity
             android:name=".ProgressActivity"
             android:exported="false" />
@@ -49,7 +48,7 @@
             android:name=".SendFileService"
             android:exported="false" />
         <service
-            android:name=".TestService"
+            android:name=".BackupService"
             android:exported="false" />
     </application>
 
