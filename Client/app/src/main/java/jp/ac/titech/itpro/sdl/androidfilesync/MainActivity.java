@@ -1,7 +1,5 @@
 package jp.ac.titech.itpro.sdl.androidfilesync;
 
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -10,19 +8,14 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.hardware.Sensor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Pair;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.EditText;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,18 +35,20 @@ public class MainActivity extends AppCompatActivity {
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK) {
                     Intent intent = result.getData();
-                    ClipData clipData = intent.getClipData();
-                    ArrayList<Uri> uris = new ArrayList<>();
+                    if(intent != null){
+                        ClipData clipData = intent.getClipData();
+                        ArrayList<Uri> uris = new ArrayList<>();
 
-                    if (clipData == null) {  // single selection
-                        uris.add(intent.getData());
-                    } else {  // multiple selection
-                        for (int i = 0; i < clipData.getItemCount(); i++) {
-                            uris.add(clipData.getItemAt(i).getUri());
+                        if (clipData == null) {  // single selection
+                            uris.add(intent.getData());
+                        } else {  // multiple selection
+                            for (int i = 0; i < clipData.getItemCount(); i++) {
+                                uris.add(clipData.getItemAt(i).getUri());
+                            }
                         }
-                    }
 
-                    startSendFileService(uris, config.port, config.passwordDigest);
+                        startSendFileService(uris, config.getPort(), config.getPasswordDigest());
+                    }
                 }
             });
 
@@ -68,11 +63,17 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = getIntent();
         String action = intent.getAction();
 
-        if(CheckNecessaryPermissions() == PackageManager.PERMISSION_GRANTED){
+        if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED){
             if (Intent.ACTION_SEND.equals(action)) {    // 共有(単一ファイル)
-                handleSendFile(intent);
+                Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                startSendFileService(
+                        new ArrayList<>(Arrays.asList(uri)),
+                        config.getPort(),
+                        config.getPasswordDigest()
+                );
             } else if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {        // 共有(複数ファイル)
-                handleSendMultipleFiles(intent);
+                ArrayList<Uri> uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+                startSendFileService(uris, config.getPort(), config.getPasswordDigest());
             }
         }
         else{
@@ -88,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void onClickSendFile(View v){
         Log.d(TAG, "onClickSendFile in " + Thread.currentThread());
-        if(CheckNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
+        if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType("*/*");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -103,8 +104,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void onClickBackup(View v){
         Log.d(TAG, "onClickBackup in " + Thread.currentThread());
-        if(CheckNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
-            SendFileService.startActionBackup(this, null, config.port, config.passwordDigest);
+        if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
+            SendFileService.startActionBackup(this, config.getBackupPaths(), config.getPort(), config.getPasswordDigest());
         }
         else{
             ActivityCompat.requestPermissions(this, necessaryPermissions, 1);
@@ -130,17 +131,6 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-
-    void handleSendFile(Intent intent) {
-        Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        startSendFileService(new ArrayList<>(Arrays.asList(uri)), config.port, config.passwordDigest);
-    }
-
-    void handleSendMultipleFiles(Intent intent) {
-        ArrayList<Uri> uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
-        startSendFileService(uris, config.port, config.passwordDigest);
-    }
-
     void startSendFileService(ArrayList<Uri> uris, int port, String passwordDigest){
         ArrayList<String> paths = new ArrayList<>();
         for(Uri uri : uris){
@@ -155,22 +145,7 @@ public class MainActivity extends AppCompatActivity {
         SendFileService.startActionSendFile(this, paths, port, passwordDigest);
     }
 
-    void startBackupService(ArrayList<Uri> uris, int port, String passwordDigest){
-        ArrayList<String> paths = new ArrayList<>();
-        for(Uri uri : uris){
-            String path = UriPath.getPathFromUri(this, uri);
-            if(path == null){
-                Log.e(TAG, "uriをファイル名に変換できません:\""+uri+"\"");
-                continue;
-            }
-            paths.add(path);
-        }
-
-        SendFileService.startActionSendFile(this, paths, port, passwordDigest);
-    }
-
-
-    int CheckNecessaryPermissions(){
+    int checkNecessaryPermissions(){
         int result[] = new int[necessaryPermissions.length];
 
         for(int i=0; i<necessaryPermissions.length; i++){

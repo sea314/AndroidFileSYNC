@@ -29,8 +29,6 @@ public class SettingActivity extends AppCompatActivity {
     private final static String TAG = SettingActivity.class.getSimpleName();
     private final static String KEY_PORT = "KEY_PORT";
     private final static String KEY_PASSWORD = "KEY_PASSWORD";
-    private final static int CONTEXT_MENU_BACKUP_ADD = 0;
-    private final static int CONTEXT_MENU_BACKUP_DELETE = 1;
     private EditText portEdit;
     private EditText passwordEdit;
     private ListView backupList;
@@ -71,9 +69,8 @@ public class SettingActivity extends AppCompatActivity {
         backupList.setAdapter(backupPathsAdapter);
         registerForContextMenu(backupList);
 
-        backupPaths.clear();
-        for (String path : config.backupPaths){
-            backupPaths.add(path);
+        backupPaths = config.getBackupPaths();
+        for (String path : backupPaths){
             backupPathsAdapter.add(pathToViewPath(path));
         }
 
@@ -82,9 +79,9 @@ public class SettingActivity extends AppCompatActivity {
             passwordEdit.setText(savedInstanceState.getString(KEY_PASSWORD));
         }
         else{
-            portEdit.setText(String.valueOf(config.port));
+            portEdit.setText(String.valueOf(config.getPort()));
 
-            if(config.passwordDigest.equals("")){
+            if(config.getPasswordDigest().equals("")){
                 passwordEdit.setText("");
             }
             else{
@@ -101,13 +98,13 @@ public class SettingActivity extends AppCompatActivity {
 
     public void onClickOK(View v) {
         Log.d(TAG, "onClickOK in " + Thread.currentThread());
-        config.port = Integer.parseInt(portEdit.getText().toString());
+        config.setPort(Integer.parseInt(portEdit.getText().toString()));
 
         String password = passwordEdit.getText().toString();
         if(!password.equals("****")){
-            config.passwordDigest = Encryption.sha256EncodeToString(password);
+            config.setPasswordDigest(Encryption.sha256EncodeToString(password));
         }
-        config.backupPaths = new HashSet<>(backupPaths);
+        config.setBackupPaths(backupPaths);
         config.Save(this);
         finish();
     }
@@ -150,15 +147,7 @@ public class SettingActivity extends AppCompatActivity {
         context.startActivity(intent);
     }
 
-    private String pathToViewPath(String path){
-        final String localStorage = "^/storage/emulated/0/";
-        final String sdStorage = "^/storage/[0-9A-F]{4}-[0-9A-F]{4}/";
-        if(path.matches(localStorage+".*")){
-            return path.replaceFirst(localStorage, "ストレージ/");
-        }
-        if(path.matches(sdStorage+".*")){
-            return path.replaceFirst(sdStorage, "SDカード/");
-        }
-        return path;
+    static String pathToViewPath(String path){
+        return ConnectServer.pathToViewPath(path);
     }
 }

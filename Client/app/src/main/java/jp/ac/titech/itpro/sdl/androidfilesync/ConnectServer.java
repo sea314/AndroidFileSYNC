@@ -34,6 +34,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -60,7 +62,8 @@ public class ConnectServer {
     final static int BUFFER_SIZE = 1024*1024;
     final static int RETRY_COUNT = 2;   // 送信のリトライ回数
 
-    class FileInfo{
+    class FileInfo implements Comparable<FileInfo> {
+        private static final int DELTA_LAST_MODIFIED = 2000;        // FAT32等のフォーマットでは更新日時は2秒単位なので最大2秒のズレが発生する
         public String path;
         public long fileSize;
         public long lastModified;
@@ -70,6 +73,28 @@ public class ConnectServer {
             this.fileSize = fileSize;
             this.lastModified = lastModified;
             this.isDir = idDir;
+        }
+
+        // 更新日時のズレを無視して同一かどうか
+        public boolean approximatelyEqual(FileInfo b) {
+            FileInfo a = this;
+            if(!a.isDir && !b.isDir){
+                if(a.fileSize == b.fileSize && a.path.equals(b.path)){
+                    if(a.lastModified + DELTA_LAST_MODIFIED > b.lastModified
+                            && a.lastModified < b.lastModified + DELTA_LAST_MODIFIED){
+                        return true;
+                    }
+                }
+            }
+            else if(a.isDir && b.isDir && a.path.equals(b.path)){
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public int compareTo(FileInfo fileInfo) {
+            return path.compareTo(fileInfo.path);
         }
     }
 
@@ -194,7 +219,7 @@ public class ConnectServer {
                              int bufferSize, long fileSize, String path,
                              long lastModified, int mode) {
         HttpURLConnection connection = null;
-
+        path = pathToViewPath(path);
         try{
             for(int retryCount =0; retryCount < RETRY_COUNT; retryCount++){
                 connection = (HttpURLConnection)url.openConnection();
@@ -265,35 +290,110 @@ public class ConnectServer {
     }
 
     public int backup(ArrayList<String> paths){
-
         ArrayList<FileInfo> serverFileList = getServerFileList();
         ArrayList<FileInfo> localFileList = getLocalFileList(paths);
+        ArrayList<FileInfo> sendFileList = new ArrayList<>();
+        ArrayList<FileInfo> deleteFileList = new ArrayList<>();
 
-        Log.i(TAG, localFileList.get(0).path);
-        Log.i(TAG, ""+localFileList.get(0).fileSize);
-        Log.i(TAG, ""+localFileList.get(0).lastModified);
-        Log.i(TAG, ""+localFileList.get(0).isDir);
+
+
+
+        int serverIndex = 0;
+        int localIndex = 0;
+
+        while(serverIndex < serverFileList.size() && localIndex < localFileList.size()){
+            FileInfo s = serverFileList.get(serverIndex);
+            FileInfo l = localFileList.get(localIndex);
+
+            if(s.approximatelyEqual(l)){
+                serverIndex++;
+                localIndex++;
+                continue;
+            }
+
+            int cmp = s.path.compareTo(l.path);
+
+            if(cmp == 0){
+                sendFileList.add(l);
+                deleteFileList.add(s);
+                serverIndex++;
+                localIndex++;
+            }
+            else if(cmp > 0){   // s.path > l.path
+                sendFileList.add(l);
+                localIndex++;
+            }
+            else{   // s.path < l.path
+                deleteFileList.add(s);
+                serverIndex++;
+            }
+        }
+        if(serverIndex < serverFileList.size()){
+            deleteFileList.addAll(serverFileList.subList(serverIndex, serverFileList.size()));
+        }
+        if(localIndex < localFileList.size()){
+            sendFileList.addAll(localFileList.subList(localIndex, localFileList.size()));
+        }
+
+        sendFileList.removeIf(a -> a.isDir);
+        for(int i=0;i<deleteFileList.size();i++){
+            FileInfo file = deleteFileList.get(i);
+            if(file.isDir){
+                deleteFileList.removeIf(a -> a.path.startsWith(file.path+"/"));
+            }
+        }
+
+
+        Log.i(TAG, "serverFileList");
+        for(FileInfo a : serverFileList){
+            Log.i(TAG, a.path);
+        }
+        Log.i(TAG, "localFileList");
+        for(FileInfo a : localFileList){
+            Log.i(TAG, a.path);
+        }
+        Log.i(TAG, "sendFileList");
+        for(FileInfo a : sendFileList){
+            Log.i(TAG, a.path);
+        }
+        Log.i(TAG, "deleteFileList");
+        for(FileInfo a : deleteFileList){
+            Log.i(TAG, a.path);
+        }
+
+
         return  ERROR_SUCCESS;
     }
 
     private ArrayList<FileInfo> getLocalFileList(ArrayList<String> paths){
         ArrayList<FileInfo> fileList = new ArrayList<>();
 
-        for(String path : paths){
-            File file = new File(path);
-            File[] list = file.listFiles();
-
-            if (list != null) {
-                for (File a : list) {
-                    fileList.add(new FileInfo(
-                            a.getPath(),
-                            a.length(),
-                            a.lastModified(),
-                            a.isDirectory()
-                    ));
+        class FileListUp{
+            public void ListUp(ArrayList<FileInfo> fileList, String path){
+                File file = new File(path);
+                File[] list = file.listFiles();
+                if (list != null) {
+                    for (File a : list) {
+                        fileList.add(new FileInfo(
+                                pathToViewPath(a.getPath()),
+                                a.length(),
+                                a.lastModified(),
+                                a.isDirectory()
+                        ));
+                        if(a.isDirectory()){
+                            ListUp(fileList, a.getPath());
+                        }
+                    }
                 }
             }
         }
+
+        FileListUp listUp = new FileListUp();
+
+        for(String path : paths){
+            listUp.ListUp(fileList, path);
+        }
+        Collections.sort(fileList);
         return fileList;
     }
 
@@ -336,6 +436,7 @@ public class ConnectServer {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        Collections.sort(fileList);
         return fileList;
     }
 
@@ -352,5 +453,17 @@ public class ConnectServer {
             e.printStackTrace();
         }
         return sb.toString();
+    }
+
+    public static String pathToViewPath(String path){
+        final String localStorage = "^/storage/emulated/0/";
+        final String sdStorage = "^/storage/[0-9A-F]{4}-[0-9A-F]{4}/";
+        if(path.matches(localStorage+".*")){
+            return path.replaceFirst(localStorage, "ストレージ/");
+        }
+        if(path.matches(sdStorage+".*")){
+            return path.replaceFirst(sdStorage, "SDカード/");
+        }
+        return path;
     }
 }

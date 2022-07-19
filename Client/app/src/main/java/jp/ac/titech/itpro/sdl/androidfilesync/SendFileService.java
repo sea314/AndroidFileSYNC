@@ -4,15 +4,6 @@ import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 
 public class SendFileService extends IntentService {
@@ -45,14 +36,14 @@ public class SendFileService extends IntentService {
         context.startService(intent);
     }
 
-    public static void startActionBackup(Context context, ArrayList<String> paths, int port, String passwordDigest) {
+    public static void startActionBackup(Context context, ArrayList<String> backupPaths, int port, String passwordDigest) {
         if(isRunning){
             return;
         }
         isRunning = true;
         Intent intent = new Intent(context, SendFileService.class);
         intent.setAction(ACTION_BACKUP);
-        intent.putStringArrayListExtra(EXTRA_PATHS, paths);
+        intent.putStringArrayListExtra(EXTRA_PATHS, backupPaths);
         intent.putExtra(EXTRA_PASSWORD_DIGEST, passwordDigest);
         intent.putExtra(EXTRA_PORT, port);
         context.startService(intent);
