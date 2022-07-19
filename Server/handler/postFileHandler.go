@@ -37,10 +37,7 @@ func PostFileHandler(c echo.Context) error {
 	}
 
 	if param.split == 0 {
-		fmt.Println("path:", param.path)
-		fmt.Println("fileSize:", param.fileSize)
-		fmt.Println("lastModified:", param.lastModified)
-		fmt.Println("mode:", param.mode)
+		fmt.Println("file recieved:", param.path)
 	}
 
 	err = writeFile(param)

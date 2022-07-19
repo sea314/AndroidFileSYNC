@@ -24,8 +24,8 @@ func PostFileDeleteHandler(c echo.Context) error {
 	for i := 0; i < len(param.FileList); i++ {
 		dir := os.Getenv("AndroidFileSYNC BackupDirectory")
 		path := dir + "/" + param.FileList[i]
+		fmt.Println("delete:", path)
 		os.RemoveAll(path)
-		fmt.Print(path)
 	}
 	return c.String(http.StatusOK, "ok")
 }

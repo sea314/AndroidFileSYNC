@@ -22,11 +22,13 @@ func FileTimeToUnixTime(fileTime syscall.Filetime) uint64 {
 	time := MakeInt64(fileTime.LowDateTime, fileTime.HighDateTime)
 	time -= 116444412000000000 // PowerShell> (Get-Date "1970/1/1 0:0:0").ToFileTime()
 	time /= 10000              // FileTime:100ns, UinxTime:1ms
+	time -= 9 * 60 * 60 * 1000 // JST+9:00 UnixTimeはUTCだがFileTimeはJST
 	return time
 }
 
 func UnixTimeToFileTime(unixTime uint64) syscall.Filetime {
-	time := unixTime * 10000   // FileTime:100ns, UinxTime:1ms
+	time := unixTime + 9 * 60 * 60 * 1000 // JST+9:00 UnixTimeはUTCだがFileTimeはJST
+	time *= 10000   // FileTime:100ns, UinxTime:1ms
 	time += 116444412000000000 // PowerShell> (Get-Date "1970/1/1 0:0:0").ToFileTime()
 	var fileTime syscall.Filetime
 	fileTime.HighDateTime = HighInt32(time)

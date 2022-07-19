@@ -9,7 +9,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.stream.Collectors;
 
 public class SendFileService extends IntentService {
     private final static String TAG = SendFileService.class.getSimpleName();
@@ -21,8 +20,6 @@ public class SendFileService extends IntentService {
     private static final String EXTRA_PORT = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PORT";
 
     private static boolean isRunning = false;
-
-    private ConnectServer connection;
 
     public SendFileService() {
         super(TAG);
@@ -68,7 +65,7 @@ public class SendFileService extends IntentService {
         String password_digest = intent.getStringExtra(EXTRA_PASSWORD_DIGEST);
         int port = intent.getIntExtra(EXTRA_PORT, 0);
 
-        connection = new ConnectServer(context, password_digest, port);
+        ConnectServer connection = new ConnectServer(context, password_digest, port);
         int connErr = connection.connect();
 
         if(connErr != ConnectServer.ERROR_SUCCESS){
@@ -86,7 +83,6 @@ public class SendFileService extends IntentService {
             }
             return;
         }
-        Log.i(TAG, connection.getAddress());
 
         if (ACTION_BACKUP.equals(action)) {
             onActionBackup(connection, paths);
@@ -111,15 +107,21 @@ public class SendFileService extends IntentService {
 
     private void onActionSendFile(ConnectServer connection, ArrayList<String> localPaths){
         for(String localPath : localPaths) {
+            String serverPath =  localPathToServerPath(localPath);
+            Log.i(TAG, "send file:"+serverPath);
             connection.sendFile(localPath, localPathToServerPath(localPath), ConnectServer.MODE_DESKTOP);
         }
     }
 
     private void onActionBackup(ConnectServer connection, ArrayList<String> paths){
+        Log.i(TAG, "get server file list");
         ArrayList<ServerFileInfo> serverFileList = connection.getServerFileList();
+        Log.i(TAG, "list up local file");
         ArrayList<LocalFileInfo> localFileList = getLocalFileList(paths);
         ArrayList<ServerFileInfo> deleteFileList = new ArrayList<>();
         ArrayList<LocalFileInfo> sendFileList = new ArrayList<>();
+
+        Log.i(TAG, "list up sync file");
 
         int serverIndex = 0;
         int localIndex = 0;
@@ -136,7 +138,7 @@ public class SendFileService extends IntentService {
 
             int cmp = s.serverPath.compareTo(l.serverPath);
 
-            if(cmp == 0){
+            if(cmp == 0){   // 名前一致 → 更新日時が違うorフォルダファイルの違い
                 sendFileList.add(l);
                 deleteFileList.add(s);
                 serverIndex++;
@@ -147,7 +149,9 @@ public class SendFileService extends IntentService {
                 localIndex++;
             }
             else{   // s.path < l.path
-                deleteFileList.add(s);
+                if(!l.serverPath.startsWith(s.serverPath+"/")){
+                    deleteFileList.add(s);
+                }
                 serverIndex++;
             }
         }
@@ -166,23 +170,7 @@ public class SendFileService extends IntentService {
             }
         }
 
-        Log.i(TAG, "serverFileList");
-        for(ServerFileInfo a : serverFileList){
-            Log.i(TAG, a.serverPath);
-        }
-        Log.i(TAG, "localFileList");
-        for(LocalFileInfo a : localFileList){
-            Log.i(TAG, a.serverPath);
-        }
-        Log.i(TAG, "deleteFileList");
-        for(ServerFileInfo a : deleteFileList){
-            Log.i(TAG, a.serverPath);
-        }
-        Log.i(TAG, "sendFileList");
-        for(LocalFileInfo a : sendFileList){
-            Log.i(TAG, a.serverPath);
-        }
-
+        Log.i(TAG, "delete file");
         ArrayList<String> deleteFiles = new ArrayList<>();
         for (ServerFileInfo a : deleteFileList) {
             deleteFiles.add(a.serverPath);
@@ -190,6 +178,7 @@ public class SendFileService extends IntentService {
         connection.sendDelete(deleteFiles);
 
         for (LocalFileInfo a : sendFileList) {
+            Log.i(TAG, "send file:"+a.serverPath);
             connection.sendFile(a.localPath, a.serverPath, ConnectServer.MODE_BACKUP);
         }
     }

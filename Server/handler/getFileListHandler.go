@@ -47,6 +47,5 @@ func GetFileListHandler(c echo.Context) error {
 		})
 
 	files := Files{FileList: fileList}
-	fmt.Println(files)
 	return c.JSON(http.StatusOK, files)
 }

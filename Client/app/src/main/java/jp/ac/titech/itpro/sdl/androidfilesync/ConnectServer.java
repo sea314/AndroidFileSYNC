@@ -30,8 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -68,10 +66,7 @@ public class ConnectServer {
     public int connect(){
         serverAddress = null;
         sendBroadcast();
-        if(receiveBroadCastResponse() != 0){
-            return -1;
-        }
-        return 0;
+        return receiveBroadCastResponse();
     }
 
     public String getAddress(){
@@ -144,6 +139,7 @@ public class ConnectServer {
             Log.e(TAG, "receiveBroadCastResponse: IOエラー");
             return ERROR_IO;
         }
+        Log.i(TAG, "server address:"+getAddress());
         return ERROR_SUCCESS;
     }
 
@@ -165,6 +161,7 @@ public class ConnectServer {
             sendFileData(splitIndex, url, fileBuffer,
                     0, 0, serverPath,
                     file.lastModified(), mode);
+            fileSteam.close();
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -209,12 +206,6 @@ public class ConnectServer {
                 httpStream.write(body, 0, body.length);
                 connection.connect();
 
-                Log.i(TAG, "Split:"+splitIndex);
-                Log.i(TAG, "File-Path:"+serverPath);
-                Log.i(TAG, "File-Size:"+fileSize);
-                Log.i(TAG, "Last-Modified:"+lastModified);
-                Log.i(TAG, "SHA256:"+Encryption.sha256EncodeToString(fileBuffer, bufferSize));
-
                 // レスポンスコードの確認します。
                 int responseCode = connection.getResponseCode();
                 String response = connection.getResponseMessage();
@@ -222,7 +213,6 @@ public class ConnectServer {
 
                 switch(responseCode){
                     case HttpURLConnection.HTTP_OK:
-                        Log.i(TAG, "HTTP_OK:"+response);
                         return ERROR_SUCCESS;
 
                     case HttpURLConnection.HTTP_BAD_REQUEST:
@@ -249,83 +239,6 @@ public class ConnectServer {
         return ERROR_TIMEOUT;
     }
 
-    /*
-    private int backup(ArrayList<String> paths){
-        ArrayList<FileInfo> serverFileList = getServerFileList();
-        ArrayList<FileInfo> localFileList = getLocalFileList(paths);
-        ArrayList<FileInfo> sendFileList = new ArrayList<>();
-        ArrayList<FileInfo> deleteFileList = new ArrayList<>();
-
-        int serverIndex = 0;
-        int localIndex = 0;
-
-        while(serverIndex < serverFileList.size() && localIndex < localFileList.size()){
-            FileInfo s = serverFileList.get(serverIndex);
-            FileInfo l = localFileList.get(localIndex);
-
-            if(s.approximatelyEqual(l)){
-                serverIndex++;
-                localIndex++;
-                continue;
-            }
-
-            int cmp = s.path.compareTo(l.path);
-
-            if(cmp == 0){
-                sendFileList.add(l);
-                deleteFileList.add(s);
-                serverIndex++;
-                localIndex++;
-            }
-            else if(cmp > 0){   // s.path > l.path
-                sendFileList.add(l);
-                localIndex++;
-            }
-            else{   // s.path < l.path
-                deleteFileList.add(s);
-                serverIndex++;
-            }
-        }
-        if(serverIndex < serverFileList.size()){
-            deleteFileList.addAll(serverFileList.subList(serverIndex, serverFileList.size()));
-        }
-        if(localIndex < localFileList.size()){
-            sendFileList.addAll(localFileList.subList(localIndex, localFileList.size()));
-        }
-
-        sendFileList.removeIf(a -> a.isDir);
-        for(int i=0;i<deleteFileList.size();i++){
-            FileInfo file = deleteFileList.get(i);
-            if(file.isDir){
-                deleteFileList.removeIf(a -> a.path.startsWith(file.path+"/"));
-            }
-        }
-
-        Log.i(TAG, "serverFileList");
-        for(FileInfo a : serverFileList){
-            Log.i(TAG, a.path);
-        }
-        Log.i(TAG, "localFileList");
-        for(FileInfo a : localFileList){
-            Log.i(TAG, a.path);
-        }
-        Log.i(TAG, "sendFileList");
-        for(FileInfo a : sendFileList){
-            Log.i(TAG, a.path);
-        }
-        Log.i(TAG, "deleteFileList");
-        for(FileInfo a : deleteFileList){
-            Log.i(TAG, a.path);
-        }
-
-        sendDelete(deleteFileList.stream().map(a -> a.path).collect(Collectors.toList()));
-        for (FileInfo a : sendFileList) {
-            sendFile(a.path, MODE_BACKUP);
-        }
-        return ERROR_SUCCESS;
-    }
-*/
-
     public ArrayList<ServerFileInfo> getServerFileList(){
         ArrayList<ServerFileInfo> fileList = new ArrayList<>();
         try {
@@ -342,7 +255,6 @@ public class ConnectServer {
             String response = connection.getResponseMessage();
             String body = convertToString(connection.getInputStream());
 
-
             connection.disconnect();
             Log.i(TAG, responseCode+":"+response);
             Log.i(TAG, "body:"+body);
@@ -357,7 +269,6 @@ public class ConnectServer {
                         obj.getLong("lastModified"),
                         obj.getBoolean("isDir")
                 ));
-                Log.i(TAG, array.get(i).toString());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -400,7 +311,6 @@ public class ConnectServer {
 
                 switch(responseCode){
                     case HttpURLConnection.HTTP_OK:
-                        Log.i(TAG, "HTTP_OK:"+response);
                         return ERROR_SUCCESS;
 
                     case HttpURLConnection.HTTP_BAD_REQUEST:
@@ -420,10 +330,7 @@ public class ConnectServer {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return ERROR_FILE_OPEN;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return ERROR_IO;
-        } catch (JSONException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
             return ERROR_IO;
         }
@@ -431,9 +338,9 @@ public class ConnectServer {
     }
 
     private String convertToString(InputStream stream) throws IOException {
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         String line = "";
-        BufferedReader br = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
+        BufferedReader br = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
         while ((line = br.readLine()) != null) {
             sb.append(line);
         }

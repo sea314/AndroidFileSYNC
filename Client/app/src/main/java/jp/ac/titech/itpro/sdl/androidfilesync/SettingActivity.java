@@ -6,11 +6,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
 
 import android.app.Activity;
-import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.MenuItem;
@@ -20,21 +20,21 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 
 public class SettingActivity extends AppCompatActivity {
     private final static String TAG = SettingActivity.class.getSimpleName();
     private final static String KEY_PORT = "KEY_PORT";
     private final static String KEY_PASSWORD = "KEY_PASSWORD";
+    private final static String KEY_BACKUP_LOCAL_PATHS = "KEY_BACKUP_LOCAL_PATHS";
     private EditText portEdit;
     private EditText passwordEdit;
     private ListView backupList;
     private Config config = new Config();
     private ArrayList<String> backupPaths = new ArrayList<>();
-    private ArrayAdapter backupPathsAdapter;
+
+    // リスト項目とListViewを対応付けるArrayAdapterを用意する
+    private ArrayAdapter backupPathsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<String>());
 
     ActivityResultLauncher<Intent> selectBackupDirectoryActivity = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -54,6 +54,10 @@ public class SettingActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder(StrictMode.getVmPolicy())
+                .detectLeakedClosableObjects()
+                .build());
+
         setContentView(R.layout.activity_setting);
         config.Load(getApplicationContext());
 
@@ -61,32 +65,28 @@ public class SettingActivity extends AppCompatActivity {
         passwordEdit = findViewById(R.id.password_edit);
         backupList = findViewById(R.id.backup_list);
 
-        // リスト項目とListViewを対応付けるArrayAdapterを用意する
-        backupPathsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<String>());
-
-        // ListViewにArrayAdapterを設定する
-        backupList = (ListView)findViewById(R.id.backup_list);
-        backupList.setAdapter(backupPathsAdapter);
-        registerForContextMenu(backupList);
-
-        backupPaths = config.getBackupPaths();
-        for (String path : backupPaths){
-            backupPathsAdapter.add(localPathToServerPath(path));
-        }
-
         if (savedInstanceState != null) {
             portEdit.setText(savedInstanceState.getString(KEY_PORT));
             passwordEdit.setText(savedInstanceState.getString(KEY_PASSWORD));
+            backupPaths = savedInstanceState.getStringArrayList(KEY_BACKUP_LOCAL_PATHS);
         }
         else{
             portEdit.setText(String.valueOf(config.getPort()));
-
             if(config.getPasswordDigest().equals("")){
                 passwordEdit.setText("");
             }
             else{
                 passwordEdit.setText("****");
             }
+            backupPaths = config.getBackupPaths();
+        }
+
+        // ListViewにArrayAdapterを設定する
+        backupList.setAdapter(backupPathsAdapter);
+        registerForContextMenu(backupList);
+
+        for (String path : backupPaths){
+            backupPathsAdapter.add(localPathToServerPath(path));
         }
     }
 
@@ -123,23 +123,26 @@ public class SettingActivity extends AppCompatActivity {
 
         AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
 
-        switch (item.getItemId()) {
-            case R.id.add_backup:
-                onClickAddBackup(item.getActionView());
-                return true;
-            case  R.id.delete_backup:
-                backupPaths.remove(info.position);
-                backupPathsAdapter.remove(backupPathsAdapter.getItem(info.position));
-                return true;
-            default:
-                return super.onContextItemSelected(item);
+        if(item.getItemId() == R.id.add_backup){
+            onClickAddBackup(item.getActionView());
+            return true;
+        }
+        else if(item.getItemId() == R.id.delete_backup){
+            backupPaths.remove(info.position);
+            backupPathsAdapter.remove(backupPathsAdapter.getItem(info.position));
+            return true;
+        }
+        else{
+            return super.onContextItemSelected(item);
         }
     }
 
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString(KEY_PORT, portEdit.getText().toString());
         outState.putString(KEY_PASSWORD, passwordEdit.getText().toString());
+        outState.putStringArrayList(KEY_BACKUP_LOCAL_PATHS, backupPaths);
     }
 
     public static void startSettingActivity(Context context){
