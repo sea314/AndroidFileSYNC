@@ -33,6 +33,7 @@ func GetFileListHandler(c echo.Context) error {
 					fmt.Print(err.Error())
 					return nil
 				}
+				relativePath = filepath.ToSlash(relativePath)
 
 				fileList = append(fileList, FileInfo{
 					Path:         relativePath,

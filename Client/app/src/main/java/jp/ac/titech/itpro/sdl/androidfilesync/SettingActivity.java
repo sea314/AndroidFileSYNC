@@ -46,7 +46,7 @@ public class SettingActivity extends AppCompatActivity {
                     String path = UriPath.getPathFromUri(this, pickedDir.getUri());
 
                     backupPaths.add(path);
-                    backupPathsAdapter.add(pathToViewPath(path));
+                    backupPathsAdapter.add(localPathToServerPath(path));
                     Log.i(TAG, path);
                 }
             });
@@ -71,7 +71,7 @@ public class SettingActivity extends AppCompatActivity {
 
         backupPaths = config.getBackupPaths();
         for (String path : backupPaths){
-            backupPathsAdapter.add(pathToViewPath(path));
+            backupPathsAdapter.add(localPathToServerPath(path));
         }
 
         if (savedInstanceState != null) {
@@ -147,7 +147,7 @@ public class SettingActivity extends AppCompatActivity {
         context.startActivity(intent);
     }
 
-    static String pathToViewPath(String path){
-        return ConnectServer.pathToViewPath(path);
+    static String localPathToServerPath(String localPath){
+        return LocalFileInfo.localPathToServerPath(localPath);
     }
 }

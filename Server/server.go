@@ -21,6 +21,8 @@ func main() {
 
 	e.POST("/file", handler.PostFileHandler)
 
+	e.POST("/filedelete", handler.PostFileDeleteHandler)
+
 	e.GET("/filelist", handler.GetFileListHandler)
 
 	e.Logger.Fatal(e.Start(":" + strconv.Itoa(port)))

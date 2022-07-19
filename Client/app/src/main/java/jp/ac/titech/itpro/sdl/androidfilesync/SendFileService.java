@@ -4,20 +4,25 @@ import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
+
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 public class SendFileService extends IntentService {
     private final static String TAG = SendFileService.class.getSimpleName();
-    public static final String ACTION_SEND_FILE = "jp.ac.titech.itpro.sdl.androidfilesync.action.SEND_FILE";
+    private static final String ACTION_SEND_FILE = "jp.ac.titech.itpro.sdl.androidfilesync.action.SEND_FILE";
     private static final String ACTION_BACKUP = "jp.ac.titech.itpro.sdl.androidfilesync.action.BACKUP";
 
-    public static final String EXTRA_PATHS = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PATHS";
-    public static final String EXTRA_PASSWORD_DIGEST = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PASSWORD_DIGEST";
-    public static final String EXTRA_PORT = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PORT";
+    private static final String EXTRA_PATHS = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PATHS";
+    private static final String EXTRA_PASSWORD_DIGEST = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PASSWORD_DIGEST";
+    private static final String EXTRA_PORT = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PORT";
 
     private static boolean isRunning = false;
 
-    ConnectServer connection;
+    private ConnectServer connection;
 
     public SendFileService() {
         super(TAG);
@@ -84,26 +89,10 @@ public class SendFileService extends IntentService {
         Log.i(TAG, connection.getAddress());
 
         if (ACTION_BACKUP.equals(action)) {
-            if (paths != null) {
-                Log.d(TAG, "paths:"+paths);
-                connection.backup(paths);
-            }
-            else{
-                Log.d(TAG, "uri is not open");
-            }
+            onActionBackup(connection, paths);
         }
         else if(ACTION_SEND_FILE.equals(action)){
-            if (paths != null) {
-                Log.d(TAG, "paths:"+paths);
-
-                for(String path : paths) {
-                    connection.sendFile(path, ConnectServer.MODE_DESKTOP);
-                }
-            }
-            else{
-                Log.d(TAG, "uri is not open");
-            }
-
+            onActionSendFile(connection, paths);
         }
     }
 
@@ -118,5 +107,128 @@ public class SendFileService extends IntentService {
         Log.d(TAG, "onDestroy in " + Thread.currentThread());
         isRunning = false;
         super.onDestroy();
+    }
+
+    private void onActionSendFile(ConnectServer connection, ArrayList<String> localPaths){
+        for(String localPath : localPaths) {
+            connection.sendFile(localPath, localPathToServerPath(localPath), ConnectServer.MODE_DESKTOP);
+        }
+    }
+
+    private void onActionBackup(ConnectServer connection, ArrayList<String> paths){
+        ArrayList<ServerFileInfo> serverFileList = connection.getServerFileList();
+        ArrayList<LocalFileInfo> localFileList = getLocalFileList(paths);
+        ArrayList<ServerFileInfo> deleteFileList = new ArrayList<>();
+        ArrayList<LocalFileInfo> sendFileList = new ArrayList<>();
+
+        int serverIndex = 0;
+        int localIndex = 0;
+
+        while(serverIndex < serverFileList.size() && localIndex < localFileList.size()){
+            ServerFileInfo s = serverFileList.get(serverIndex);
+            LocalFileInfo l = localFileList.get(localIndex);
+
+            if(s.approximatelyEqual(l)){
+                serverIndex++;
+                localIndex++;
+                continue;
+            }
+
+            int cmp = s.serverPath.compareTo(l.serverPath);
+
+            if(cmp == 0){
+                sendFileList.add(l);
+                deleteFileList.add(s);
+                serverIndex++;
+                localIndex++;
+            }
+            else if(cmp > 0){   // s.path > l.path
+                sendFileList.add(l);
+                localIndex++;
+            }
+            else{   // s.path < l.path
+                deleteFileList.add(s);
+                serverIndex++;
+            }
+        }
+        if(serverIndex < serverFileList.size()){
+            deleteFileList.addAll(serverFileList.subList(serverIndex, serverFileList.size()));
+        }
+        if(localIndex < localFileList.size()){
+            sendFileList.addAll(localFileList.subList(localIndex, localFileList.size()));
+        }
+
+        sendFileList.removeIf(a -> a.isDir);
+        for(int i=0;i<deleteFileList.size();i++){
+            ServerFileInfo file = deleteFileList.get(i);
+            if(file.isDir){
+                deleteFileList.removeIf(a -> a.serverPath.startsWith(file.serverPath+"/"));
+            }
+        }
+
+        Log.i(TAG, "serverFileList");
+        for(ServerFileInfo a : serverFileList){
+            Log.i(TAG, a.serverPath);
+        }
+        Log.i(TAG, "localFileList");
+        for(LocalFileInfo a : localFileList){
+            Log.i(TAG, a.serverPath);
+        }
+        Log.i(TAG, "deleteFileList");
+        for(ServerFileInfo a : deleteFileList){
+            Log.i(TAG, a.serverPath);
+        }
+        Log.i(TAG, "sendFileList");
+        for(LocalFileInfo a : sendFileList){
+            Log.i(TAG, a.serverPath);
+        }
+
+        ArrayList<String> deleteFiles = new ArrayList<>();
+        for (ServerFileInfo a : deleteFileList) {
+            deleteFiles.add(a.serverPath);
+        }
+        connection.sendDelete(deleteFiles);
+
+        for (LocalFileInfo a : sendFileList) {
+            connection.sendFile(a.localPath, a.serverPath, ConnectServer.MODE_BACKUP);
+        }
+    }
+
+    private ArrayList<LocalFileInfo> getLocalFileList(ArrayList<String> paths){
+        ArrayList<LocalFileInfo> fileList = new ArrayList<>();
+
+        class FileListUp{
+            public void ListUp(ArrayList<LocalFileInfo> fileList, String path){
+                File file = new File(path);
+                File[] list = file.listFiles();
+                if (list != null) {
+                    for (File a : list) {
+                        if(a.isDirectory()){
+                            ListUp(fileList, a.getPath());
+                        }
+                        else{
+                            fileList.add(new LocalFileInfo(
+                                    a.getPath(),
+                                    a.length(),
+                                    a.lastModified(),
+                                    false
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        FileListUp listUp = new FileListUp();
+
+        for(String path : paths){
+            listUp.ListUp(fileList, path);
+        }
+        Collections.sort(fileList, Comparator.comparing(a -> a.serverPath));
+        return fileList;
+    }
+
+    private static String localPathToServerPath(String localPath){
+        return LocalFileInfo.localPathToServerPath(localPath);
     }
 }
