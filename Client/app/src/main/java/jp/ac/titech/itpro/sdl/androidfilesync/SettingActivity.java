@@ -4,7 +4,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
-import androidx.lifecycle.LiveData;
 import androidx.work.Constraints;
 import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
@@ -16,7 +15,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.StrictMode;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.MenuItem;
@@ -26,6 +24,7 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -65,9 +64,6 @@ public class SettingActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder(StrictMode.getVmPolicy())
-                .detectLeakedClosableObjects()
-                .build());
 
         setContentView(R.layout.activity_setting);
         config.Load(getApplicationContext());
@@ -117,6 +113,10 @@ public class SettingActivity extends AppCompatActivity {
         config.setPort(Integer.parseInt(portEdit.getText().toString()));
 
         String password = passwordEdit.getText().toString();
+        if(password.equals("")){
+            Toast.makeText(this, R.string.invalid_password_label, Toast.LENGTH_SHORT);
+            return;
+        }
         if(!password.equals("****")){
             config.setPasswordDigest(Encryption.sha256EncodeToString(password));
         }

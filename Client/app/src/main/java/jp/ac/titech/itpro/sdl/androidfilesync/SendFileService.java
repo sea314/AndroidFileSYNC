@@ -23,19 +23,18 @@ public class SendFileService extends IntentService {
     private static final String EXTRA_PASSWORD_DIGEST = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PASSWORD_DIGEST";
     private static final String EXTRA_PORT = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PORT";
 
-    private static boolean isRunning = false;
-    private static MutableLiveData<ProgressBarInfo> progressInfo;
+    private static MutableLiveData<Boolean> isRunning = new MutableLiveData<>(false);
+    private static MutableLiveData<ProgressBarInfo> progressInfo = new MutableLiveData<>();
 
     public SendFileService() {
         super(TAG);
     }
 
     public static void startActionSendFile(Context context, ArrayList<String> paths, int port, String passwordDigest) {
-        if(isRunning){
+        if(isRunning.getValue()){
             return;
         }
-        isRunning = true;
-        progressInfo = new MutableLiveData<>();
+        isRunning.postValue(true);
         progressInfo.postValue(new ProgressBarInfo(0, 0, "初期化中"));
         Intent intent = new Intent(context, SendFileService.class);
         intent.setAction(ACTION_SEND_FILE);
@@ -46,10 +45,10 @@ public class SendFileService extends IntentService {
     }
 
     public static void startActionBackup(Context context, ArrayList<String> backupPaths, int port, String passwordDigest) {
-        if(isRunning){
+        if(isRunning.getValue()){
             return;
         }
-        isRunning = true;
+        isRunning.postValue(true);
         progressInfo = new MutableLiveData<>();
         progressInfo.postValue(new ProgressBarInfo(0, 0, "初期化中"));
         Intent intent = new Intent(context, SendFileService.class);
@@ -111,7 +110,7 @@ public class SendFileService extends IntentService {
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy in " + Thread.currentThread());
-        isRunning = false;
+        isRunning.postValue(false);
         super.onDestroy();
     }
 
@@ -260,5 +259,9 @@ public class SendFileService extends IntentService {
 
     public static LiveData<ProgressBarInfo> getProgressInfo(){
         return progressInfo;
+    }
+
+    public static LiveData<Boolean> IsRunning(){
+        return isRunning;
     }
 }

@@ -13,4 +13,6 @@
     <string name="delete_backup_button_label">除外</string>
     <string name="ok_button_label">OK</string>
     <string name="cancel_button_label">キャンセル</string>
+    <string name="invalid_password_label">パスワードを入力してください</string>
+    <string name="empty_backup_paths_label">バックアップ対象を設定してください</string>
 </resources>

@@ -78,7 +78,12 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 		EnableWindow(GetDlgItem(hDlg, IDC_BUTTON_SERVER_STOP), server.isRunning());
 
 		SetDlgItemInt(hDlg, IDC_EDIT_PORT, config.port, FALSE);
-		SetDlgItemTextA(hDlg, IDC_EDIT_PASSWORD, "****");
+		if (config.passwordDigest == u8"") {
+			SetDlgItemTextA(hDlg, IDC_EDIT_PASSWORD, "");
+		}
+		else {
+			SetDlgItemTextA(hDlg, IDC_EDIT_PASSWORD, "****");
+		}
 		Button_SetCheck(GetDlgItem(hDlg, IDC_CHECK_AUTOSTARTUP), config.autoRun);
 		SetDlgItemTextA(hDlg, IDC_EDIT_PATH, cstr(config.backupDir));
 
@@ -135,6 +140,11 @@ INT_PTR CALLBACK DialogProc(HWND hDlg, UINT msg, WPARAM wp, LPARAM lp) {
 			if (password != u8"****") {
 				config.passwordDigest = sha256ToBase64String(password.c_str(), password.size());
 			}
+			if (password == u8"") {
+				MessageBoxA(hDlg, cstr(u8"パスワードを設定してください"), cstr(u8"エラー"), MB_OK);
+				return TRUE;
+			}
+
 			KillTimer(hDlg, 0);
 			EndDialog(hDlg, IDOK);
 			return TRUE;

@@ -18,8 +18,10 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,9 +31,12 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressBar progressBar;
     private TextView progressMessage;
+    private Button sendFileButton;
+    private Button backupButton;
 
     private Config config = new Config();
     private LiveData<ProgressBarInfo> progressInfo;
+    private LiveData<Boolean> isSendFileServiceRunning;
 
     String necessaryPermissions[] = {
         Manifest.permission.INTERNET,
@@ -70,11 +75,18 @@ public class MainActivity extends AppCompatActivity {
 
         progressBar = findViewById(R.id.progressbar);
         progressMessage = findViewById(R.id.progress_message_view);
+        sendFileButton = findViewById(R.id.send_file_button);
+        backupButton = findViewById(R.id.backup_button);
 
         Intent intent = getIntent();
         String action = intent.getAction();
 
         initializeProgressBar();
+        isSendFileServiceRunning = SendFileService.IsRunning();
+        isSendFileServiceRunning.observe(this, is ->{
+            sendFileButton.setEnabled(!is);
+            backupButton.setEnabled(!is);
+        });
 
         if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED){
             if (Intent.ACTION_SEND.equals(action)) {    // 共有(単一ファイル)
@@ -102,6 +114,11 @@ public class MainActivity extends AppCompatActivity {
 
     public void onClickSendFile(View v){
         Log.d(TAG, "onClickSendFile in " + Thread.currentThread());
+        if(config.getPasswordDigest().equals("")){
+            Toast.makeText(this, R.string.invalid_password_label, Toast.LENGTH_LONG).show();
+            SettingActivity.startSettingActivity(this);
+            return;
+        }
         if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.setType("*/*");
@@ -117,6 +134,16 @@ public class MainActivity extends AppCompatActivity {
 
     public void onClickBackup(View v){
         Log.d(TAG, "onClickBackup in " + Thread.currentThread());
+        if(config.getPasswordDigest().equals("")){
+            Toast.makeText(this, R.string.invalid_password_label, Toast.LENGTH_LONG).show();
+            SettingActivity.startSettingActivity(this);
+            return;
+        }
+        if(config.getBackupPaths().isEmpty()){
+            Toast.makeText(this, R.string.empty_backup_paths_label, Toast.LENGTH_LONG).show();
+            SettingActivity.startSettingActivity(this);
+            return;
+        }
         if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
             SendFileService.startActionBackup(this, config.getBackupPaths(), config.getPort(), config.getPasswordDigest());
             initializeProgressBar();
