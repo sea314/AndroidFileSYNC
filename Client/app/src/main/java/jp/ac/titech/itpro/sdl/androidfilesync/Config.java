@@ -10,31 +10,41 @@ import java.util.HashSet;
 
 public class Config {
     private final static String TAG = Config.class.getSimpleName();
+    private final static String KEY_APPNAME = "AndroidFileSYNC";
+    private final static String KEY_PORT = "port";
+    private final static String KEY_PASSWORD_DIGEST = "passwordDigest";
+    private final static String KEY_BACKUP_PATHS = "backupPaths";
+    private final static String KEY_AUTO_BACKUP = "autoBackup";
+
 
     private int port;
     private String passwordDigest;
     private ArrayList<String> backupPaths = new ArrayList<>();
+    private boolean autoBackup;
 
     public void Load(Context context){
-        SharedPreferences pref = context.getSharedPreferences("AndroidFileSYNC", Context.MODE_PRIVATE);
-        port = pref.getInt("port", 12345);
-        passwordDigest = pref.getString("passwordDigest", "");
+        SharedPreferences pref = context.getSharedPreferences(KEY_APPNAME, Context.MODE_PRIVATE);
+        port = pref.getInt(KEY_PORT, 12345);
+        passwordDigest = pref.getString(KEY_PASSWORD_DIGEST, "");
         backupPaths.clear();
-        backupPaths.addAll(pref.getStringSet("backupPaths", new HashSet<>()));
+        backupPaths.addAll(pref.getStringSet(KEY_BACKUP_PATHS, new HashSet<>()));
+        autoBackup = pref.getBoolean(KEY_AUTO_BACKUP, false);
 
         Log.i(TAG, "Config.Load");
         Log.i(TAG, "port:"+port);
         Log.i(TAG, "passwordDigest:"+passwordDigest);
         Log.i(TAG, "backupPaths:"+backupPaths);
+        Log.i(TAG, "autoBackup:"+autoBackup);
     }
 
     public void Save(Context context){
-        SharedPreferences pref = context.getSharedPreferences("AndroidFileSYNC", Context.MODE_PRIVATE);
+        SharedPreferences pref = context.getSharedPreferences(KEY_APPNAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = pref.edit();
         Log.i(TAG, "Config.Save");
-        editor.putInt("port", port);
-        editor.putString("passwordDigest", passwordDigest);
-        editor.putStringSet("backupPaths", new HashSet<>(backupPaths));
+        editor.putInt(KEY_PORT, port);
+        editor.putString(KEY_PASSWORD_DIGEST, passwordDigest);
+        editor.putStringSet(KEY_BACKUP_PATHS, new HashSet<>(backupPaths));
+        editor.putBoolean(KEY_AUTO_BACKUP, autoBackup);
         editor.commit();
     }
 
@@ -73,6 +83,13 @@ public class Config {
                 i++;
             }
         }
+    }
 
+    public boolean isAutoBackup() {
+        return autoBackup;
+    }
+
+    public void setAutoBackup(boolean autoBackup) {
+        this.autoBackup = autoBackup;
     }
 }

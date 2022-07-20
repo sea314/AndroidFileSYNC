@@ -4,6 +4,11 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
+import androidx.work.Constraints;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.WorkRequest;
 
 import android.app.Activity;
 import android.content.Context;
@@ -17,24 +22,29 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ListView;
 
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 public class SettingActivity extends AppCompatActivity {
     private final static String TAG = SettingActivity.class.getSimpleName();
     private final static String KEY_PORT = "KEY_PORT";
     private final static String KEY_PASSWORD = "KEY_PASSWORD";
+    private final static String KEY_AUTO_BACKUP = "KEY_AUTO_BACKUP";
     private final static String KEY_BACKUP_LOCAL_PATHS = "KEY_BACKUP_LOCAL_PATHS";
     private EditText portEdit;
     private EditText passwordEdit;
     private ListView backupList;
+    private CheckBox autoBackupCheck;
     private Config config = new Config();
     private ArrayList<String> backupPaths = new ArrayList<>();
 
     // リスト項目とListViewを対応付けるArrayAdapterを用意する
-    private ArrayAdapter backupPathsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<String>());
+    private ArrayAdapter backupPathsAdapter;
 
     ActivityResultLauncher<Intent> selectBackupDirectoryActivity = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -63,11 +73,13 @@ public class SettingActivity extends AppCompatActivity {
 
         portEdit = findViewById(R.id.port_edit);
         passwordEdit = findViewById(R.id.password_edit);
+        autoBackupCheck = findViewById(R.id.auto_backup_check);
         backupList = findViewById(R.id.backup_list);
 
         if (savedInstanceState != null) {
             portEdit.setText(savedInstanceState.getString(KEY_PORT));
             passwordEdit.setText(savedInstanceState.getString(KEY_PASSWORD));
+            autoBackupCheck.setChecked(savedInstanceState.getBoolean(KEY_AUTO_BACKUP));
             backupPaths = savedInstanceState.getStringArrayList(KEY_BACKUP_LOCAL_PATHS);
         }
         else{
@@ -78,10 +90,12 @@ public class SettingActivity extends AppCompatActivity {
             else{
                 passwordEdit.setText("****");
             }
+            autoBackupCheck.setChecked(config.isAutoBackup());
             backupPaths = config.getBackupPaths();
         }
 
         // ListViewにArrayAdapterを設定する
+        backupPathsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<String>());
         backupList.setAdapter(backupPathsAdapter);
         registerForContextMenu(backupList);
 
@@ -104,8 +118,28 @@ public class SettingActivity extends AppCompatActivity {
         if(!password.equals("****")){
             config.setPasswordDigest(Encryption.sha256EncodeToString(password));
         }
+        config.setAutoBackup(autoBackupCheck.isChecked());
         config.setBackupPaths(backupPaths);
         config.Save(this);
+
+        WorkManager manager = WorkManager.getInstance(this);
+        if(autoBackupCheck.isChecked()){
+            Constraints constraints = new Constraints.Builder()
+                    .setRequiresDeviceIdle(true)
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresBatteryNotLow(true)
+                    .build();
+
+            WorkRequest periodicWork = new PeriodicWorkRequest.Builder(
+                    BackupScheduler.class,
+                    Duration.ofMinutes(20),
+                    Duration.ofMinutes(15)
+            ).setConstraints(constraints).addTag(KEY_AUTO_BACKUP).build();
+            manager.enqueue(periodicWork);
+        }
+        else{
+            manager.cancelAllWorkByTag(KEY_AUTO_BACKUP);
+        }
         finish();
     }
 
@@ -142,6 +176,7 @@ public class SettingActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
         outState.putString(KEY_PORT, portEdit.getText().toString());
         outState.putString(KEY_PASSWORD, passwordEdit.getText().toString());
+        outState.putBoolean(KEY_AUTO_BACKUP, autoBackupCheck.isChecked());
         outState.putStringArrayList(KEY_BACKUP_LOCAL_PATHS, backupPaths);
     }
 

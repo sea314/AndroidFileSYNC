@@ -256,8 +256,6 @@ public class ConnectServer {
             String body = convertToString(connection.getInputStream());
 
             connection.disconnect();
-            Log.i(TAG, responseCode+":"+response);
-            Log.i(TAG, "body:"+body);
 
             JSONObject json = new JSONObject(body);
             JSONArray array = json.getJSONArray("fileList");
