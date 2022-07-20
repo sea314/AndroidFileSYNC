@@ -4,6 +4,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
+import androidx.lifecycle.LiveData;
 import androidx.work.Constraints;
 import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
@@ -102,6 +103,7 @@ public class SettingActivity extends AppCompatActivity {
         for (String path : backupPaths){
             backupPathsAdapter.add(localPathToServerPath(path));
         }
+
     }
 
     public void onClickAddBackup(View v){
@@ -188,4 +190,5 @@ public class SettingActivity extends AppCompatActivity {
     static String localPathToServerPath(String localPath){
         return LocalFileInfo.localPathToServerPath(localPath);
     }
+
 }

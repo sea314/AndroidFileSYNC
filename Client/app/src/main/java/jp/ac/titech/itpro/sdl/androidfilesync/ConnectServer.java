@@ -95,6 +95,7 @@ public class ConnectServer {
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, getBroadcastAddress(context), port);
             socket.send(sendPacket);
             localPort = socket.getLocalPort();
+            socket.close();
             Log.i(TAG,  "Broadcast packet sent to: " + getBroadcastAddress(context).getHostAddress());
         } catch (SocketException e) {
             e.printStackTrace();
@@ -130,6 +131,7 @@ public class ConnectServer {
             }
 
             serverAddress = socket.getInetAddress();
+            serverSocket.close();
         } catch (SocketTimeoutException e){
             e.printStackTrace();
             Log.e(TAG, "receiveBroadCastResponse: タイムアウト");

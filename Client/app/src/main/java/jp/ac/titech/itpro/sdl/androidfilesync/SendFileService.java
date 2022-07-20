@@ -5,7 +5,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
 import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,6 +24,7 @@ public class SendFileService extends IntentService {
     private static final String EXTRA_PORT = "jp.ac.titech.itpro.sdl.androidfilesync.extra.PORT";
 
     private static boolean isRunning = false;
+    private static MutableLiveData<ProgressBarInfo> progressInfo;
 
     public SendFileService() {
         super(TAG);
@@ -30,6 +35,8 @@ public class SendFileService extends IntentService {
             return;
         }
         isRunning = true;
+        progressInfo = new MutableLiveData<>();
+        progressInfo.postValue(new ProgressBarInfo(0, 0, "初期化中"));
         Intent intent = new Intent(context, SendFileService.class);
         intent.setAction(ACTION_SEND_FILE);
         intent.putStringArrayListExtra(EXTRA_PATHS, paths);
@@ -43,6 +50,8 @@ public class SendFileService extends IntentService {
             return;
         }
         isRunning = true;
+        progressInfo = new MutableLiveData<>();
+        progressInfo.postValue(new ProgressBarInfo(0, 0, "初期化中"));
         Intent intent = new Intent(context, SendFileService.class);
         intent.setAction(ACTION_BACKUP);
         intent.putStringArrayListExtra(EXTRA_PATHS, backupPaths);
@@ -72,13 +81,14 @@ public class SendFileService extends IntentService {
             Log.e(TAG, "サーバー接続失敗");
             switch (connErr){
                 case ConnectServer.ERROR_AUTHORIZATION:
-                    // todo:broadcastで通知
+                    progressInfo.postValue(new ProgressBarInfo(0, 0, "サーバー接続失敗：認証失敗"));
                     break;
                 case ConnectServer.ERROR_TIMEOUT:
+                    progressInfo.postValue(new ProgressBarInfo(0, 0, "サーバー接続失敗：タイムアウトしました"));
                     // todo:broadcastで通知
                     break;
                 case ConnectServer.ERROR_IO:
-                    // todo:broadcastで通知
+                    progressInfo.postValue(new ProgressBarInfo(0, 0, "サーバー接続失敗：IOエラー"));
                     break;
             }
             return;
@@ -106,22 +116,41 @@ public class SendFileService extends IntentService {
     }
 
     private void onActionSendFile(ConnectServer connection, ArrayList<String> localPaths){
-        for(String localPath : localPaths) {
+        long totalSize = 0;
+        ArrayList<Long> sizes = new ArrayList<>();
+        for(String localPath : localPaths){
+            File file = new File(localPath);
+            sizes.add(file.length());
+            totalSize += file.length();
+        }
+
+        long sentSize = 0;
+        for(int i=0; i<localPaths.size(); i++) {
+            String localPath = localPaths.get(i);
             String serverPath =  localPathToServerPath(localPath);
             Log.i(TAG, "send file:"+serverPath);
+            progressInfo.postValue(new ProgressBarInfo(
+                    (float)sentSize/totalSize,
+                    (float)(sentSize+sizes.get(i))/totalSize,
+                    "送信中："+serverPath));
             connection.sendFile(localPath, localPathToServerPath(localPath), ConnectServer.MODE_DESKTOP);
+            sentSize += sizes.get(i);
         }
+        progressInfo.postValue(new ProgressBarInfo(100,100, "送信完了"));
     }
 
     private void onActionBackup(ConnectServer connection, ArrayList<String> paths){
         Log.i(TAG, "get server file list");
+        progressInfo.postValue(new ProgressBarInfo(0,0, "サーバーのファイルリスト取得中"));
         ArrayList<ServerFileInfo> serverFileList = connection.getServerFileList();
         Log.i(TAG, "list up local file");
+        progressInfo.postValue(new ProgressBarInfo(0,0, "端末のファイルリスト取得中"));
         ArrayList<LocalFileInfo> localFileList = getLocalFileList(paths);
         ArrayList<ServerFileInfo> deleteFileList = new ArrayList<>();
         ArrayList<LocalFileInfo> sendFileList = new ArrayList<>();
 
         Log.i(TAG, "list up sync file");
+        progressInfo.postValue(new ProgressBarInfo(0,0, "同期するファイルリスト取得中"));
 
         int serverIndex = 0;
         int localIndex = 0;
@@ -177,10 +206,18 @@ public class SendFileService extends IntentService {
         }
         connection.sendDelete(deleteFiles);
 
+        long totalSize = sendFileList.stream().mapToLong(a->a.fileSize).sum();
+        long sentSize = 0;
         for (LocalFileInfo a : sendFileList) {
+            progressInfo.postValue(new ProgressBarInfo(
+                    (float)sentSize/totalSize,
+                    (float)(sentSize+a.fileSize)/totalSize,
+                    "送信中："+a.serverPath));
             Log.i(TAG, "send file:"+a.serverPath);
             connection.sendFile(a.localPath, a.serverPath, ConnectServer.MODE_BACKUP);
+            sentSize += a.fileSize;
         }
+        progressInfo.postValue(new ProgressBarInfo(100,100, "送信完了"));
     }
 
     private ArrayList<LocalFileInfo> getLocalFileList(ArrayList<String> paths){
@@ -219,5 +256,9 @@ public class SendFileService extends IntentService {
 
     private static String localPathToServerPath(String localPath){
         return LocalFileInfo.localPathToServerPath(localPath);
+    }
+
+    public static LiveData<ProgressBarInfo> getProgressInfo(){
+        return progressInfo;
     }
 }

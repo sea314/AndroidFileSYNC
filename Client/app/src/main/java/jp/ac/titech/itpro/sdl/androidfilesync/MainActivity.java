@@ -4,18 +4,22 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.lifecycle.LiveData;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +27,11 @@ import java.util.Arrays;
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
 
+    private ProgressBar progressBar;
+    private TextView progressMessage;
+
     private Config config = new Config();
+    private LiveData<ProgressBarInfo> progressInfo;
 
     String necessaryPermissions[] = {
         Manifest.permission.INTERNET,
@@ -60,8 +68,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         config.Load(getApplicationContext());
 
+        progressBar = findViewById(R.id.progressbar);
+        progressMessage = findViewById(R.id.progress_message_view);
+
         Intent intent = getIntent();
         String action = intent.getAction();
+
+        initializeProgressBar();
 
         if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED){
             if (Intent.ACTION_SEND.equals(action)) {    // 共有(単一ファイル)
@@ -106,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onClickBackup in " + Thread.currentThread());
         if(checkNecessaryPermissions() == PackageManager.PERMISSION_GRANTED) {
             SendFileService.startActionBackup(this, config.getBackupPaths(), config.getPort(), config.getPasswordDigest());
+            initializeProgressBar();
         }
         else{
             ActivityCompat.requestPermissions(this, necessaryPermissions, 1);
@@ -143,6 +157,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         SendFileService.startActionSendFile(this, paths, port, passwordDigest);
+        initializeProgressBar();
     }
 
     int checkNecessaryPermissions(){
@@ -156,4 +171,14 @@ public class MainActivity extends AppCompatActivity {
         return Arrays.stream(result).allMatch(a -> a==PackageManager.PERMISSION_GRANTED) ? PackageManager.PERMISSION_GRANTED : PackageManager.PERMISSION_DENIED;
     }
 
+    void initializeProgressBar(){
+        progressInfo = SendFileService.getProgressInfo();
+        if(progressInfo != null){
+            progressInfo.observe(this, a -> {
+                progressBar.setProgress((int)(a.progress*100), false);
+                progressBar.setSecondaryProgress((int)(a.secondary_progress*100));
+                progressMessage.setText(a.message);
+            });
+        }
+    }
 }

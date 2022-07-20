@@ -29,18 +29,11 @@ public class Config {
         backupPaths.clear();
         backupPaths.addAll(pref.getStringSet(KEY_BACKUP_PATHS, new HashSet<>()));
         autoBackup = pref.getBoolean(KEY_AUTO_BACKUP, false);
-
-        Log.i(TAG, "Config.Load");
-        Log.i(TAG, "port:"+port);
-        Log.i(TAG, "passwordDigest:"+passwordDigest);
-        Log.i(TAG, "backupPaths:"+backupPaths);
-        Log.i(TAG, "autoBackup:"+autoBackup);
     }
 
     public void Save(Context context){
         SharedPreferences pref = context.getSharedPreferences(KEY_APPNAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = pref.edit();
-        Log.i(TAG, "Config.Save");
         editor.putInt(KEY_PORT, port);
         editor.putString(KEY_PASSWORD_DIGEST, passwordDigest);
         editor.putStringSet(KEY_BACKUP_PATHS, new HashSet<>(backupPaths));

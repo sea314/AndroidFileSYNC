@@ -16,7 +16,7 @@ public class LocalFileInfo extends ServerFileInfo {
         final String localStorage = "^/storage/emulated/0/";
         final String sdStorage = "^/storage/[0-9A-F]{4}-[0-9A-F]{4}/";
         if(localPath.matches(localStorage+".*")){
-            return localPath.replaceFirst(localStorage, "ストレージ/");
+            return localPath.replaceFirst(localStorage, "内蔵ストレージ/");
         }
         if(localPath.matches(sdStorage+".*")){
             return localPath.replaceFirst(sdStorage, "SDカード/");
