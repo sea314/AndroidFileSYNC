@@ -46,9 +46,6 @@
         <service
             android:name=".SendFileService"
             android:exported="false" />
-        <service
-            android:name=".BackupService"
-            android:exported="false" />
     </application>
 
 </manifest>
