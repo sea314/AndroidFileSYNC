@@ -1,5 +1,6 @@
 package jp.ac.titech.itpro.sdl.androidfilesync;
 
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -12,25 +13,55 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
+// RSA暗号を扱うクラス
+//
 public class RSACipher {
-    PublicKey publicKey;
-    PrivateKey privateKey;
-    Cipher encryptoCipher;
-    Cipher decryptoCipher;
+    private final int keySize = 2048;
+    private final String algorithmMode = "RSA/ECB/PKCS1Padding";
 
-    public void initialize() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
-        KeyPairGenerator keyGen = null;
-        keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
+    private PublicKey publicKey;
+    private PrivateKey privateKey;
+    private Cipher encryptoCipher;
+    private Cipher decryptoCipher;
 
-        KeyPair keyPair;
-        keyPair = keyGen.generateKeyPair();
-        publicKey = keyPair.getPublic();
-        privateKey = keyPair.getPrivate();
-        encryptoCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        encryptoCipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        decryptoCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        decryptoCipher.init(Cipher.DECRYPT_MODE, privateKey);
+    public void initialize() {
+        clear();
+
+        try{
+            // 鍵ペア生成
+            KeyPairGenerator keyGen = null;
+            keyGen = KeyPairGenerator.getInstance("RSA");
+            keyGen.initialize(keySize);
+            KeyPair keyPair;
+            keyPair = keyGen.generateKeyPair();
+            publicKey = keyPair.getPublic();
+            privateKey = keyPair.getPrivate();
+
+            //　暗号アルゴリズム初期化
+            encryptoCipher = Cipher.getInstance(algorithmMode);
+            encryptoCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            decryptoCipher = Cipher.getInstance(algorithmMode);
+            decryptoCipher.init(Cipher.DECRYPT_MODE, privateKey);
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+            // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
+            e.printStackTrace();
+            assert false;
+        }
+    }
+
+    public void initialize(PublicKey publicKey) throws InvalidKeyException{
+        clear();
+        this.publicKey = publicKey;
+
+        try {
+            //　暗号アルゴリズム初期化
+            encryptoCipher = Cipher.getInstance(algorithmMode);
+            encryptoCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
+            // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
+            e.printStackTrace();
+            assert false;
+        }
     }
 
     public PublicKey getPublicKey() {
@@ -38,10 +69,27 @@ public class RSACipher {
     }
 
     public byte[] encrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
-        return encryptoCipher.doFinal(bytes);
+        if(encryptoCipher != null){
+            return encryptoCipher.doFinal(bytes);
+        }
+        else{
+            throw new IllegalStateException("初期化前もしくは秘密鍵を持たない状態で暗号化しようとしました。");
+        }
     }
 
     public byte[] decrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
-        return decryptoCipher.doFinal(bytes);
+        if(decryptoCipher != null){
+            return decryptoCipher.doFinal(bytes);
+        }
+        else{
+            throw new IllegalStateException("初期化前に復号化しようとしました。");
+        }
+    }
+
+    public void clear(){
+        publicKey = null;
+        privateKey = null;
+        encryptoCipher = null;
+        decryptoCipher = null;
     }
 }

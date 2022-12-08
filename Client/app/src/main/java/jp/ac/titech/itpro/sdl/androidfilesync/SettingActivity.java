@@ -61,6 +61,11 @@ public class SettingActivity extends AppCompatActivity {
                 }
             });
 
+    public static void startSettingActivity(Context context){
+        Intent intent = new Intent(context, SettingActivity.class);
+        context.startActivity(intent);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -182,10 +187,6 @@ public class SettingActivity extends AppCompatActivity {
         outState.putStringArrayList(KEY_BACKUP_LOCAL_PATHS, backupPaths);
     }
 
-    public static void startSettingActivity(Context context){
-        Intent intent = new Intent(context, SettingActivity.class);
-        context.startActivity(intent);
-    }
 
     static String localPathToServerPath(String localPath){
         return LocalFileInfo.localPathToServerPath(localPath);

@@ -1,11 +1,22 @@
 - Server、Clientの通信暗号化
 	1. https化
 	2. 自前で暗号化
+		公開鍵生成→共通鍵送信
+		javaはbouncy castle、goはcrypto/rsa、crypt/aesで暗号扱える
+		rsaの1024bit、aesの128bit使う
 	
-- 同期機能
+	
+- 同期機能の自動起動
+	- foreground serviceに変更する案(syncthingはこれ)
+	
+- 通信データの圧縮
+	- gzipがgoでもjavaでも使える
+	- httpはbase64じゃなくても送れるらしい
+- 読み込みの並列化
+- UIの改善
+- 指定Wifiでのみ送信する設定
+- 競合との差別化
 
-- Clientの設定ダイアログ
 
-- Serverの設定ダイアログ
 
 

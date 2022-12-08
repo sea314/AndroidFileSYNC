@@ -11,7 +11,6 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,7 +21,6 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -166,6 +164,9 @@ public class MainActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             case R.id.menu_option:
                 SettingActivity.startSettingActivity(this);
+                break;
+            case R.id.menu_test:
+                TestActivity.startTestActivity(this);
                 break;
         }
         invalidateOptionsMenu();
