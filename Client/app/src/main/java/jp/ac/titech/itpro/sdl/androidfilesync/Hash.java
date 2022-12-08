@@ -7,7 +7,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-public class Encryption {
+public class Hash {
     // sha256ハッシュ値を計算
     public static String sha256EncodeToString(byte[] data, int bufferSize){
         try {
@@ -37,5 +37,4 @@ public class Encryption {
     public static byte[] base64Decode(byte[] bytes){
         return Base64.encode(bytes, Base64.NO_WRAP);
     }
-
 }

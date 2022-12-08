@@ -118,7 +118,7 @@ public class SettingActivity extends AppCompatActivity {
             return;
         }
         if(!password.equals("****")){
-            config.setPasswordDigest(Encryption.sha256EncodeToString(password));
+            config.setPasswordDigest(Hash.sha256EncodeToString(password));
         }
         config.setAutoBackup(autoBackupCheck.isChecked());
         config.setBackupPaths(backupPaths);

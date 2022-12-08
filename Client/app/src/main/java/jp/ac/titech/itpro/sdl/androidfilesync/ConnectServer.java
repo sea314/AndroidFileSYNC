@@ -82,7 +82,7 @@ public class ConnectServer {
     void sendBroadcast() {
         long unixTime = System.currentTimeMillis();
         String passWithTime = String.format("%d:%s", unixTime, passwordDigest);
-        msgDigest = Encryption.sha256EncodeToString(passWithTime.getBytes(StandardCharsets.UTF_8));
+        msgDigest = Hash.sha256EncodeToString(passWithTime.getBytes(StandardCharsets.UTF_8));
         String messageStr =  String.format("%d:%s", unixTime, msgDigest);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -124,7 +124,7 @@ public class ConnectServer {
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String data = reader.readLine();
 
-            if(!data.equals(Encryption.sha256EncodeToString(msgDigest+passwordDigest))){
+            if(!data.equals(Hash.sha256EncodeToString(msgDigest+passwordDigest))){
                 Log.e(TAG, "auth error");
                 msgDigest = null;
                 return ERROR_AUTHORIZATION;
@@ -192,7 +192,7 @@ public class ConnectServer {
                 connection.setRequestProperty("File-Path", serverPath);
                 connection.setRequestProperty("File-Size", String.valueOf(fileSize));
                 connection.setRequestProperty("Last-Modified", String.valueOf(lastModified));
-                connection.setRequestProperty("Sha-256", Encryption.sha256EncodeToString(fileBuffer, bufferSize));
+                connection.setRequestProperty("Sha-256", Hash.sha256EncodeToString(fileBuffer, bufferSize));
                 switch(mode){
                     case MODE_DESKTOP:
                         connection.setRequestProperty("Mode", "DESKTOP");
@@ -201,7 +201,7 @@ public class ConnectServer {
                         connection.setRequestProperty("Mode", "BACKUP");
                         break;
                 }
-                byte[] body = Encryption.base64Encode(fileBuffer, bufferSize);
+                byte[] body = Hash.base64Encode(fileBuffer, bufferSize);
                 connection.setFixedLengthStreamingMode(body.length);
                 OutputStream httpStream = connection.getOutputStream();
 
