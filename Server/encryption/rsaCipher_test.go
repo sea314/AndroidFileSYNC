@@ -27,7 +27,7 @@ func TestRSA(t *testing.T){
 	rand.Read(plain)
 
 	c1.Initialize()
-	c2.InitilazeWithPublicKey(c1.GetPublicKey())
+	c2.InitializeWithPublicKey(c1.GetPublicKey())
 	
 	encrypted, err := c2.Encrypt(plain)
 	if(err != nil){
@@ -41,9 +41,5 @@ func TestRSA(t *testing.T){
 	if(!reflect.DeepEqual(plain ,decrypted)){
 		t.Error("plainとdecrypted不一致")
 	}
-
-
-
-
 }
 

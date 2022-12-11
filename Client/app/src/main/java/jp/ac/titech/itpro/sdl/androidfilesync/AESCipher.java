@@ -21,8 +21,8 @@ public class AESCipher {
     private SecretKey secretKey;
     private IvParameterSpec initialVector;
 
-    private Cipher encryptoCipher;
-    private Cipher decryptoCipher;
+    private Cipher encrypter;
+    private Cipher decrypter;
 
     public void initialize() {
         try {
@@ -34,12 +34,12 @@ public class AESCipher {
             secretKey = keyGen.generateKey();
 
             //　暗号アルゴリズム初期化
-            encryptoCipher = Cipher.getInstance(algorithmMode);
-            encryptoCipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            initialVector = new IvParameterSpec(encryptoCipher.getIV());
+            encrypter = Cipher.getInstance(algorithmMode);
+            encrypter.init(Cipher.ENCRYPT_MODE, secretKey);
+            initialVector = new IvParameterSpec(encrypter.getIV());
 
-            decryptoCipher = Cipher.getInstance(algorithmMode);
-            decryptoCipher.init(Cipher.DECRYPT_MODE, secretKey, initialVector);
+            decrypter = Cipher.getInstance(algorithmMode);
+            decrypter.init(Cipher.DECRYPT_MODE, secretKey, initialVector);
         } catch (NoSuchAlgorithmException e) {
             // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
             e.printStackTrace();
@@ -65,11 +65,11 @@ public class AESCipher {
             this.secretKey = secretKey;
             this.initialVector = initialVector;
 
-            encryptoCipher = Cipher.getInstance(algorithmMode);
-            encryptoCipher.init(Cipher.ENCRYPT_MODE, secretKey, initialVector);
+            encrypter = Cipher.getInstance(algorithmMode);
+            encrypter.init(Cipher.ENCRYPT_MODE, secretKey, initialVector);
 
-            decryptoCipher = Cipher.getInstance(algorithmMode);
-            decryptoCipher.init(Cipher.DECRYPT_MODE, secretKey, initialVector);
+            decrypter = Cipher.getInstance(algorithmMode);
+            decrypter.init(Cipher.DECRYPT_MODE, secretKey, initialVector);
         } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
             // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
             e.printStackTrace();
@@ -89,8 +89,8 @@ public class AESCipher {
     }
 
     public byte[] encrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
-        if(encryptoCipher != null){
-            return encryptoCipher.doFinal(bytes);
+        if(encrypter != null){
+            return encrypter.doFinal(bytes);
         }
         else{
             throw new IllegalStateException("初期化前に暗号化しようとしました。");
@@ -98,8 +98,8 @@ public class AESCipher {
     }
 
     public byte[] decrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
-        if(decryptoCipher != null){
-            return decryptoCipher.doFinal(bytes);
+        if(decrypter != null){
+            return decrypter.doFinal(bytes);
         }
         else{
             throw new IllegalStateException("初期化前に復号化しようとしました。");
@@ -109,7 +109,7 @@ public class AESCipher {
     public void clear(){
         secretKey = null;
         initialVector = null;
-        encryptoCipher = null;
-        decryptoCipher = null;
+        encrypter = null;
+        decrypter = null;
     }
 }

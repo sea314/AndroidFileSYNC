@@ -20,8 +20,8 @@ public class RSACipher {
 
     private PublicKey publicKey;
     private PrivateKey privateKey;
-    private Cipher encryptoCipher;
-    private Cipher decryptoCipher;
+    private Cipher encrypter;
+    private Cipher decrypter;
 
     public void initialize() {
         clear();
@@ -37,10 +37,10 @@ public class RSACipher {
             privateKey = keyPair.getPrivate();
 
             //　暗号アルゴリズム初期化
-            encryptoCipher = Cipher.getInstance(algorithmMode);
-            encryptoCipher.init(Cipher.ENCRYPT_MODE, publicKey);
-            decryptoCipher = Cipher.getInstance(algorithmMode);
-            decryptoCipher.init(Cipher.DECRYPT_MODE, privateKey);
+            encrypter = Cipher.getInstance(algorithmMode);
+            encrypter.init(Cipher.ENCRYPT_MODE, publicKey);
+            decrypter = Cipher.getInstance(algorithmMode);
+            decrypter.init(Cipher.DECRYPT_MODE, privateKey);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
             // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
             e.printStackTrace();
@@ -54,8 +54,8 @@ public class RSACipher {
 
         try {
             //　暗号アルゴリズム初期化
-            encryptoCipher = Cipher.getInstance(algorithmMode);
-            encryptoCipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            encrypter = Cipher.getInstance(algorithmMode);
+            encrypter.init(Cipher.ENCRYPT_MODE, publicKey);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
             // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
             e.printStackTrace();
@@ -68,8 +68,8 @@ public class RSACipher {
     }
 
     public byte[] encrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
-        if(encryptoCipher != null){
-            return encryptoCipher.doFinal(bytes);
+        if(encrypter != null){
+            return encrypter.doFinal(bytes);
         }
         else{
             throw new IllegalStateException("初期化前もしくは秘密鍵を持たない状態で暗号化しようとしました。");
@@ -77,8 +77,8 @@ public class RSACipher {
     }
 
     public byte[] decrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
-        if(decryptoCipher != null){
-            return decryptoCipher.doFinal(bytes);
+        if(decrypter != null){
+            return decrypter.doFinal(bytes);
         }
         else{
             throw new IllegalStateException("初期化前に復号化しようとしました。");
@@ -90,7 +90,7 @@ public class RSACipher {
     public void clear(){
         publicKey = null;
         privateKey = null;
-        encryptoCipher = null;
-        decryptoCipher = null;
+        encrypter = null;
+        decrypter = null;
     }
 }

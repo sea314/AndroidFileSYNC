@@ -22,13 +22,6 @@ type RSACipher struct {
 	publicKey  *PublicKey
 }
 
-func (c *RSACipher) Decrypt(ciphertext []byte) (out []byte, err error) {
-	return rsa.DecryptPKCS1v15(rand.Reader, c.privateKey, ciphertext)
-}
-
-func (c *RSACipher) Encrypt(msg []byte) (out []byte, err error) {
-	return rsa.EncryptPKCS1v15(rand.Reader, c.publicKey, msg)
-}
 
 func (c *RSACipher) Initialize() error {
 	privateKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
@@ -41,13 +34,51 @@ func (c *RSACipher) Initialize() error {
 	return nil
 }
 
-func (c *RSACipher) InitilazeWithPublicKey(publicKey *PublicKey) {
+func (c *RSACipher) InitializeWithPublicKey(publicKey *PublicKey) {
 	c.privateKey = nil
 	c.publicKey = publicKey
 }
 
+func (c *RSACipher) InitializeWithPublicKeyBytes(b []byte) error {
+	publicKey, err := BytesToPublicKey(b)
+	if(err != nil){
+		return err
+	}
+	c.InitializeWithPublicKey(publicKey)
+	return nil
+}
+
+func (c *RSACipher) Decrypt(ciphertext []byte) (out []byte, err error) {
+	return rsa.DecryptPKCS1v15(rand.Reader, c.privateKey, ciphertext)
+}
+
+func (c *RSACipher) Encrypt(msg []byte) (out []byte, err error) {
+	return rsa.EncryptPKCS1v15(rand.Reader, c.publicKey, msg)
+}
+
+
 func (c *RSACipher) GetPublicKey() *PublicKey {
 	return c.publicKey
+}
+
+func (c *RSACipher) GetPublicKeyBytes() []byte {
+	return PublicKeyToBytes(c.publicKey)
+}
+
+
+// OpenSSH形式で公開鍵をバイト列に変換
+func PublicKeyToBytes(publicKey *PublicKey) []byte {
+	// 形式
+	// ssh-rsa (4バイトでEのバイト数)(E)(4バイトでNのバイト数)(Nのbase64エンコード)
+	key_base64 := []byte(base64.StdEncoding.EncodeToString(publicKey.N.Bytes()))
+
+	var buf bytes.Buffer
+	binary.Write(&buf, binary.BigEndian, []byte("ssh-rsa ")) // go文字列の文字コードはutf-8なのでascii互換あり
+	binary.Write(&buf, binary.BigEndian, int32(8))
+	binary.Write(&buf, binary.BigEndian, int64(publicKey.E))
+	binary.Write(&buf, binary.BigEndian, int32(len(key_base64)))
+	binary.Write(&buf, binary.BigEndian, key_base64)
+	return buf.Bytes()
 }
 
 func BytesToPublicKey(b []byte) (*PublicKey, error) {
@@ -79,19 +110,4 @@ func BytesToPublicKey(b []byte) (*PublicKey, error) {
 	nInt.SetBytes(nBytes)
 	publicKey.N = nInt
 	return publicKey, nil
-}
-
-// OpenSSH形式で公開鍵をバイト列に変換
-func PublicKeyToBytes(publicKey *PublicKey) []byte {
-	// 形式
-	// ssh-rsa (4バイトでEのバイト数)(E)(4バイトでNのバイト数)(Nのbase64エンコード)
-	key_base64 := []byte(base64.StdEncoding.EncodeToString(publicKey.N.Bytes()))
-
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, []byte("ssh-rsa ")) // go文字列の文字コードはutf-8なのでascii互換あり
-	binary.Write(&buf, binary.BigEndian, int32(8))
-	binary.Write(&buf, binary.BigEndian, int64(publicKey.E))
-	binary.Write(&buf, binary.BigEndian, int32(len(key_base64)))
-	binary.Write(&buf, binary.BigEndian, key_base64)
-	return buf.Bytes()
 }
