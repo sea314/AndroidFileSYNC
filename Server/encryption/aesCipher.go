@@ -5,7 +5,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/binary"
 	"errors"
 )
@@ -67,15 +66,12 @@ func (c *AESCipher) GetKeyBytes() []byte {
 
 func AESKeyToBytes(iv []byte, key []byte) []byte{
 	// 形式
-	// (ivの長さ4バイト)(ivのbase64エンコード)(keyの長さ4バイト)(keyのbase64エンコード)
-	iv_base64 := []byte(base64.StdEncoding.EncodeToString(iv))
-	key_base64 := []byte(base64.StdEncoding.EncodeToString(key))
-
+	// (ivの長さ4バイト)(iv)(keyの長さ4バイト)(key)
 	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, int32(len(iv_base64)))
-	binary.Write(&buf, binary.BigEndian, iv_base64)
-	binary.Write(&buf, binary.BigEndian, int32(len(key_base64)))
-	binary.Write(&buf, binary.BigEndian, key_base64)
+	binary.Write(&buf, binary.BigEndian, int32(len(iv)))
+	binary.Write(&buf, binary.BigEndian, iv)
+	binary.Write(&buf, binary.BigEndian, int32(len(key)))
+	binary.Write(&buf, binary.BigEndian, key)
 	return buf.Bytes()
 }
 
@@ -85,19 +81,14 @@ func BytesToAESKey(b []byte) (iv []byte, key []byte, err error){
 	var keySize int32
 	err = binary.Read(buf, binary.BigEndian, &ivSize)
 	if err != nil { return nil, nil, errors.New("形式が違います") }
-	ivBase64 := make([]byte, ivSize)
-	err = binary.Read(buf, binary.BigEndian, &ivBase64)
+	iv = make([]byte, ivSize)
+	err = binary.Read(buf, binary.BigEndian, &iv)
 	if err != nil { return nil, nil, errors.New("形式が違います") }
 	err = binary.Read(buf, binary.BigEndian, &keySize)
 	if err != nil { return nil, nil, errors.New("形式が違います") }
-	keyBase64 := make([]byte, keySize)
-	err = binary.Read(buf, binary.BigEndian, &keyBase64)
+	key = make([]byte, keySize)
+	err = binary.Read(buf, binary.BigEndian, &key)
 	if err != nil { return nil, nil, errors.New("形式が違います") }
-
-	iv, err = base64.StdEncoding.DecodeString(string(ivBase64))
-	if err != nil { return nil, nil, err }
-	key, err = base64.StdEncoding.DecodeString(string(keyBase64))
-	if err != nil { return nil, nil, err }
 	return iv, key, nil
 }
 

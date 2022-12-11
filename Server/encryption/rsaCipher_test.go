@@ -10,7 +10,10 @@ import (
 func TestPublicKeyToBytes(t *testing.T){
 	c := new(encryption.RSACipher) 
 	c.Initialize()
-	b := encryption.PublicKeyToBytes(c.GetPublicKey())
+	b, err := encryption.PublicKeyToBytes(c.GetPublicKey())
+	if(err!=nil){
+		t.Error(err)
+	}
 	publicKey, err := encryption.BytesToPublicKey(b)
 	if(err!=nil){
 		t.Error(err)

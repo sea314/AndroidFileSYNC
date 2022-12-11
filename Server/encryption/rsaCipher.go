@@ -1,13 +1,9 @@
 package encryption
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
-	"encoding/binary"
-	"errors"
-	"math/big"
+	"crypto/x509"
 
 	"github.com/labstack/gommon/log"
 )
@@ -61,53 +57,16 @@ func (c *RSACipher) GetPublicKey() *PublicKey {
 	return c.publicKey
 }
 
-func (c *RSACipher) GetPublicKeyBytes() []byte {
+func (c *RSACipher) GetPublicKeyBytes() ([]byte, error) {
 	return PublicKeyToBytes(c.publicKey)
 }
 
-
-// OpenSSH形式で公開鍵をバイト列に変換
-func PublicKeyToBytes(publicKey *PublicKey) []byte {
-	// 形式
-	// ssh-rsa (4バイトでEのバイト数)(E)(4バイトでNのバイト数)(Nのbase64エンコード)
-	key_base64 := []byte(base64.StdEncoding.EncodeToString(publicKey.N.Bytes()))
-
-	var buf bytes.Buffer
-	binary.Write(&buf, binary.BigEndian, []byte("ssh-rsa ")) // go文字列の文字コードはutf-8なのでascii互換あり
-	binary.Write(&buf, binary.BigEndian, int32(8))
-	binary.Write(&buf, binary.BigEndian, int64(publicKey.E))
-	binary.Write(&buf, binary.BigEndian, int32(len(key_base64)))
-	binary.Write(&buf, binary.BigEndian, key_base64)
-	return buf.Bytes()
+// der形式で公開鍵をバイト列に変換
+func PublicKeyToBytes(publicKey *PublicKey) ([]byte, error) {
+	return x509.MarshalPKCS1PublicKey(publicKey), nil;
 }
 
+// der形式のバイト列を公開鍵に変換
 func BytesToPublicKey(b []byte) (*PublicKey, error) {
-	buf := bytes.NewBuffer(b)
-	tmp := make([]byte, 8)
-	var eSize int32
-	var nSize int32
-	var err error
-	err = binary.Read(buf, binary.BigEndian, &tmp)
-	if err != nil || string(tmp) != "ssh-rsa " { return nil, errors.New("形式が違います") }
-	err = binary.Read(buf, binary.BigEndian, &eSize)
-	if err != nil { return nil, errors.New("形式が違います") }
-	eBytes := make([]byte, eSize)
-	err = binary.Read(buf, binary.BigEndian, &eBytes)
-	if err != nil { return nil, errors.New("形式が違います") }
-	err = binary.Read(buf, binary.BigEndian, &nSize)
-	if err != nil { return nil, errors.New("形式が違います") }
-	nBase64 := make([]byte, nSize)
-	err = binary.Read(buf, binary.BigEndian, &nBase64)
-	if err != nil { return nil, errors.New("形式が違います") }
-	
-	publicKey := new(PublicKey)
-	eInt := new(big.Int)
-	eInt.SetBytes(eBytes)
-	publicKey.E = int(eInt.Int64())
-	nBytes, err := base64.StdEncoding.DecodeString(string(nBase64))
-	if err != nil { return nil, err }
-	nInt := new(big.Int)
-	nInt.SetBytes(nBytes)
-	publicKey.N = nInt
-	return publicKey, nil
+	return x509.ParsePKCS1PublicKey(b)
 }

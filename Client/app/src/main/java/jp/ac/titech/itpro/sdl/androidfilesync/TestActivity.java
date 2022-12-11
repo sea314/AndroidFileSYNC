@@ -13,11 +13,11 @@ import android.widget.TextView;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 public class TestActivity extends AppCompatActivity {
     private final static String TAG = TestActivity.class.getSimpleName();
@@ -46,7 +46,49 @@ public class TestActivity extends AppCompatActivity {
 
     public void onClickTest(View v){
         Log.d(TAG, "onClickTest");
-        checkAES();
+        checkAESKeySave();
+    }
+
+    void checkAESKeySave(){
+        try{
+            AESCipher aesCipher1 = new AESCipher();
+            AESCipher aesCipher2 = new AESCipher();
+            aesCipher1.initialize();
+            byte[] b = aesCipher1.getKeyBytes();
+            aesCipher2.initialize(b);
+            if(Arrays.equals(aesCipher1.getInitialVector(), aesCipher2.getInitialVector())){
+                test_view1.setText("初期ベクトル一致");
+            }
+            else{
+                test_view1.setText("初期ベクトル不一致");
+            }
+            if(aesCipher1.getSecretKey().equals(aesCipher2.getSecretKey())){
+                test_view2.setText("鍵一致");
+            }
+            else{
+                test_view2.setText("鍵不一致");
+            }
+        } catch (InvalidAlgorithmParameterException | InvalidKeyException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void checkRSAPublicKeySave(){
+        try {
+            RSACipher rsaCipher1 = new RSACipher();
+            RSACipher rsaCipher2 = new RSACipher();
+            rsaCipher1.initialize();
+            byte[] b = rsaCipher1.getPublicKeyBytes();
+            rsaCipher2.initialize(b);
+            if(rsaCipher1.getPublicKey().equals(rsaCipher2.getPublicKey())){
+                test_view1.setText("一致");
+            }
+            else{
+                test_view1.setText("不一致");
+            }
+        } catch (InvalidKeySpecException | InvalidKeyException e) {
+            e.printStackTrace();
+        }
     }
 
     void checkRSA(){
@@ -69,11 +111,7 @@ public class TestActivity extends AppCompatActivity {
 
             test_view2.setText(new String(decrypted));
 
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
+        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
     }
@@ -86,7 +124,7 @@ public class TestActivity extends AppCompatActivity {
 
         try {
             aesCipher1.initialize();
-            aesCipher2.initialize(aesCipher1.getSecretKey(), aesCipher1.getInitialVector());
+            aesCipher2.initialize(aesCipher1.getInitialVector(), aesCipher1.getSecretKey());
 
             String plain = test_edit1.getText().toString();
 
@@ -107,13 +145,7 @@ public class TestActivity extends AppCompatActivity {
 
             test_view4.setText(new String(decrypted2));
 
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } catch (InvalidAlgorithmParameterException e) {
+        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException | InvalidAlgorithmParameterException e) {
             e.printStackTrace();
         }
     }
