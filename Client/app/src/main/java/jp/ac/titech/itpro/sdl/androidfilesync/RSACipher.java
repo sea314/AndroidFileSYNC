@@ -1,6 +1,5 @@
 package jp.ac.titech.itpro.sdl.androidfilesync;
 
-import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -84,6 +83,8 @@ public class RSACipher {
         else{
             throw new IllegalStateException("初期化前に復号化しようとしました。");
         }
+
+
     }
 
     public void clear(){

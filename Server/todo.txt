@@ -4,6 +4,9 @@
 		公開鍵生成→共通鍵送信
 		javaはbouncy castle、goはcrypto/rsa、crypt/aesで暗号扱える
 		rsaの1024bit、aesの128bit使う
+		rsa-ssh (4バイトでEのバイト数) E (4バイトでNのバイト数) base64エンコード(ビッグエンディアン)で送信
+
+
 	
 	
 - 同期機能の自動起動

@@ -1,5 +1,11 @@
 {
     "files.associations": {
         "*.rh": "cpp"
-    }
+    },
+    "[go]": {
+        "editor.formatOnSave": false,
+        "editor.defaultFormatter": "golang.go"
+    },
+    "go.testOnSave": false,
+    "editor.formatOnSave": true
 }
