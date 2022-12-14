@@ -4,8 +4,10 @@ import static android.content.Context.WIFI_SERVICE;
 
 import android.content.Context;
 import android.net.DhcpInfo;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.StrictMode;
+import android.util.Base64;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -26,7 +28,9 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -37,12 +41,16 @@ import org.json.JSONObject;
 
 public class ConnectServer {
     private final static String TAG = ConnectServer.class.getSimpleName();
+    static final int randomBytesSize = 8;
     Context context;
     String passwordDigest;
     String msgDigest;
     int port;
     InetAddress serverAddress;
     int localPort;
+    RSACipher rsaCipher;
+    AESCipher aesCipher;
+
 
     public final static int ERROR_SUCCESS = 0;
     public final static int ERROR_AUTHORIZATION = -1;
@@ -65,11 +73,13 @@ public class ConnectServer {
 
     public int connect(){
         serverAddress = null;
+        rsaCipher = new RSACipher();
+        rsaCipher.initialize();
         sendBroadcast();
         return receiveBroadCastResponse();
     }
 
-    public String getAddress(){
+    public String getServerAddress(){
         if(serverAddress == null){
             connect();
         }
@@ -79,11 +89,33 @@ public class ConnectServer {
         return null;
     }
 
+    static String getWifiIPAddress(Context context) {
+        WifiManager manager = (WifiManager)context.getSystemService(WIFI_SERVICE);
+        WifiInfo info = manager.getConnectionInfo();
+        int ipAddr = info.getIpAddress();
+        return String.format("%d.%d.%d.%d",
+                (ipAddr>>0)&0xff, (ipAddr>>8)&0xff, (ipAddr>>16)&0xff, (ipAddr>>24)&0xff);
+    }
+
     void sendBroadcast() {
-        long unixTime = System.currentTimeMillis();
-        String passWithTime = String.format("%d:%s", unixTime, passwordDigest);
-        msgDigest = Hash.sha256EncodeToString(passWithTime.getBytes(StandardCharsets.UTF_8));
-        String messageStr =  String.format("%d:%s", unixTime, msgDigest);
+        SecureRandom random = new SecureRandom();
+        byte[] randomBytes = new byte[randomBytesSize];
+        byte[] publicKeyBytes = rsaCipher.getPublicKeyBytes();
+        String idAddr = getWifiIPAddress(context);
+
+        // ハッシュ値計算　(乱数)(パスワード)(公開鍵)(IPアドレス)のハッシュ
+        random.nextBytes(randomBytes);
+        ByteBuffer buffer = ByteBuffer.allocate(randomBytes.length+passwordDigest.length()+publicKeyBytes.length+idAddr.length());
+        buffer.put(randomBytes);
+        buffer.put(passwordDigest.getBytes(StandardCharsets.UTF_8));
+        buffer.put(publicKeyBytes);
+        buffer.put(idAddr.getBytes(StandardCharsets.UTF_8));
+        msgDigest = Hash.sha256EncodeToString(buffer.array());
+        String randomBytesBase64 = Base64.encodeToString(randomBytes, Base64.NO_WRAP);
+        String publicKeyBase64 = Base64.encodeToString(publicKeyBytes, Base64.NO_WRAP);
+
+        // メッセージ本体　(アプリ名),(バージョン),(base64乱数),(base64公開鍵),(base64メッセージハッシュ)
+        String messageStr =  String.format("FileSYNC,0.1,%s,%s,%s", randomBytesBase64, publicKeyBase64, msgDigest);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -141,7 +173,7 @@ public class ConnectServer {
             Log.e(TAG, "receiveBroadCastResponse: IOエラー");
             return ERROR_IO;
         }
-        Log.i(TAG, "server address:"+getAddress());
+        Log.i(TAG, "server address:"+getServerAddress());
         return ERROR_SUCCESS;
     }
 
@@ -150,7 +182,7 @@ public class ConnectServer {
         int bufferSize = 0;
         FileInputStream fileSteam = null;
         try {
-            URL url = new URL("http://"+getAddress()+"/file");
+            URL url = new URL("http://"+getServerAddress()+"/file");
             File file = new File(localPath);
             fileSteam = new FileInputStream(file);
 
@@ -244,7 +276,7 @@ public class ConnectServer {
     public ArrayList<ServerFileInfo> getServerFileList(){
         ArrayList<ServerFileInfo> fileList = new ArrayList<>();
         try {
-            URL url = new URL("http://"+getAddress()+"/filelist");
+            URL url = new URL("http://"+getServerAddress()+"/filelist");
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
             connection.setConnectTimeout(3000); // タイムアウト 3 秒
             connection.setReadTimeout(3000);
@@ -282,7 +314,7 @@ public class ConnectServer {
     public int sendDelete(ArrayList<String> serverPaths) {
         HttpURLConnection connection = null;
         try{
-            URL url = new URL("http://"+getAddress()+"/filedelete");
+            URL url = new URL("http://"+getServerAddress()+"/filedelete");
             JSONArray jsonArray = new JSONArray();
             for (String path : serverPaths){
                 jsonArray.put(path);

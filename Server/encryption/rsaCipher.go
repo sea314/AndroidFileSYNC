@@ -63,10 +63,12 @@ func (c *RSACipher) GetPublicKeyBytes() ([]byte, error) {
 
 // der形式で公開鍵をバイト列に変換
 func PublicKeyToBytes(publicKey *PublicKey) ([]byte, error) {
-	return x509.MarshalPKCS1PublicKey(publicKey), nil;
+	return x509.MarshalPKIXPublicKey(publicKey);
 }
 
 // der形式のバイト列を公開鍵に変換
 func BytesToPublicKey(b []byte) (*PublicKey, error) {
-	return x509.ParsePKCS1PublicKey(b)
+	key, err := x509.ParsePKIXPublicKey(b)
+	if(err != nil){return nil, err}
+	return  key.(*PublicKey), nil
 }

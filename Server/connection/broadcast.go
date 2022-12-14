@@ -2,21 +2,32 @@ package connection
 
 import (
 	"Server/encryption"
+	"bytes"
+	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
 	"net"
-	"strconv"
 	"strings"
 )
 
-func ClientConnectionRecieve(port int, password_digest string) {
+type PrivateKey = encryption.PrivateKey
+type PublicKey = encryption.PublicKey
+type RSACipher = encryption.RSACipher
+type AESCipher = encryption.AESCipher
+
+
+func ClientConnectionRecieve(port int, passwordDigest string) {
 	for _, ip := range getHostIPList() {
-		go broadcastRecieve(ip, port, password_digest)
+		if(ip == "127.0.0.1"){		// ループバックアドレス
+			continue;
+		}
+		go broadcastRecieve(ip, port, passwordDigest)
 	}
 }
 
-func broadcastRecieve(ipAddr string, port int, password_digest string) {
+func broadcastRecieve(ipAddr string, port int, passwordDigest string) {
 	udpAddr := &net.UDPAddr{
 		IP:   net.ParseIP(ipAddr),
 		Port: port,
@@ -38,7 +49,7 @@ func broadcastRecieve(ipAddr string, port int, password_digest string) {
 			log.Println(err)
 		}
 
-		go respondBroadCast(udpAddr, buf[:n], password_digest)
+		go respondBroadCast(udpAddr, buf[:n], passwordDigest)
 	}
 }
 
@@ -46,13 +57,13 @@ func getHostIPList() []string {
 	ips := make([]string, 0)
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return nil
 	}
 	for _, inter := range interfaces {
 		addrs, err := inter.Addrs()
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			return nil
 		}
 		for _, a := range addrs {
@@ -66,43 +77,69 @@ func getHostIPList() []string {
 	return ips
 }
 
-func respondBroadCast(udpAddr_ *net.UDPAddr, data []byte, password_digest string) {
+func respondBroadCast(udpAddr *net.UDPAddr, data []byte, passwordDigest string) {
 	msg := string(data)
-	udpAddr := udpAddr_
 
-	msg_digest, err := checkBroadCastData(msg, password_digest)
+	msgDigest, _, err := checkBroadCastData(udpAddr, msg, passwordDigest)
 	if err != nil {
 		return
 	}
 
-	sendBroadCastResponse(udpAddr.String(), msg_digest, password_digest)
+	sendBroadCastResponse(udpAddr, msgDigest, passwordDigest)
 }
 
-func checkBroadCastData(msg string, password_digest string) (string, error) {
-	index := strings.Index(msg, ":")
-	if index == -1 {
-		fmt.Println("parse error")
-		return "", errors.New("parse error")
+func checkBroadCastData(udpAddr *net.UDPAddr, msg string, passwordDigest string) (msgDigest string, rsaCipher *RSACipher ,err error) {
+	strs := strings.Split(msg, ",")
+	if(len(strs) < 3 || strs[0] != "FileSYNC"){
+		log.Println("parse error: incorrect format")
+		return "", nil, errors.New("parse error: incorrect format")
 	}
+	ip := udpAddr.IP.To4()
+	clientIP := fmt.Sprintf("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3])
 
-	time, err := strconv.ParseInt(msg[0:index], 10, 64)
-	if err != nil {
-		fmt.Println("parse error", err.Error())
-		return "", errors.New("parse error")
+	switch(strs[1]){
+	case "0.1":
+		if(len(strs) != 5){
+			log.Println("parse error: incorrect format")
+			return "", nil, errors.New("parse error: incorrect format")
+		}
+		randomBytes, err := base64.StdEncoding.DecodeString(strs[2])
+		if(err != nil){
+			log.Println("parse error: "+err.Error())
+			return "", nil, errors.New("parse error: "+err.Error())
+		}
+		publicKeyBytes, err := base64.StdEncoding.DecodeString(strs[3])
+		if(err != nil){
+			log.Println("parse error: "+err.Error())
+			return "", nil, errors.New("parse error: "+err.Error())
+		}
+		rsaCipher = new(encryption.RSACipher)
+		err = rsaCipher.InitializeWithPublicKeyBytes(publicKeyBytes)
+		if(err != nil){
+			log.Println("parse error: "+err.Error())
+			return "", nil, errors.New("parse error: "+err.Error())
+		}
+		var buf bytes.Buffer
+		binary.Write(&buf, binary.BigEndian, randomBytes)
+		binary.Write(&buf, binary.BigEndian, []byte(passwordDigest))
+		binary.Write(&buf, binary.BigEndian, publicKeyBytes)
+		binary.Write(&buf, binary.BigEndian, []byte(clientIP))
+		msgDigest := encryption.Sha256EncodeToString(buf.Bytes())
+		if(msgDigest != strs[4]){
+			log.Println("authentication error")
+			return "", nil, errors.New("authentication error")
+		}
+		return msgDigest, rsaCipher, nil
+
+
+	default:
+		log.Println("parse error: wrong version")
+		return "", nil, errors.New("parse error: wrong version")
 	}
-
-	passWithTime := fmt.Sprintf("%d:%s", time, password_digest)
-	msg_digest := encryption.Sha256EncodeToString([]byte(passWithTime))
-
-	if msg_digest != msg[index+1:] {
-		fmt.Println("auth error")
-		return "", errors.New("auth error")
-	}
-	return msg_digest, nil
 }
 
-func sendBroadCastResponse(clientAddr string, msg_digest string, password_digest string) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", clientAddr)
+func sendBroadCastResponse(udpAddr *net.UDPAddr, msgDigest string, passwordDigest string) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", udpAddr.String())
 	if err != nil {
 		log.Println("net.ResolveTCPAddr:", err.Error())
 		return
@@ -115,6 +152,6 @@ func sendBroadCastResponse(clientAddr string, msg_digest string, password_digest
 	}
 	defer connection.Close()
 
-	msg := encryption.Sha256EncodeToString([]byte(msg_digest + password_digest))
+	msg := encryption.Sha256EncodeToString([]byte(msgDigest + passwordDigest))
 	connection.Write([]byte(msg))
 }
