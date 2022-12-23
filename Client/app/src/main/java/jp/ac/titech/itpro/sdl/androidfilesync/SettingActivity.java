@@ -26,6 +26,7 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
@@ -123,7 +124,7 @@ public class SettingActivity extends AppCompatActivity {
             return;
         }
         if(!password.equals("****")){
-            config.setPasswordDigest(Hash.sha256EncodeToString(password));
+            config.setPasswordDigest(Hash.sha256EncodeBase64(password.getBytes(StandardCharsets.UTF_8)));
         }
         config.setAutoBackup(autoBackupCheck.isChecked());
         config.setBackupPaths(backupPaths);

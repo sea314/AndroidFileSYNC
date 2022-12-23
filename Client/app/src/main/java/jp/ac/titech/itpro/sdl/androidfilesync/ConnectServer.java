@@ -29,8 +29,11 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,8 +46,8 @@ public class ConnectServer {
     private final static String TAG = ConnectServer.class.getSimpleName();
     static final int randomBytesSize = 8;
     Context context;
-    String passwordDigest;
-    String msgDigest;
+    String pwdDigestBase64;
+    String clientMsgDigestBase64;
     int port;
     InetAddress serverAddress;
     int localPort;
@@ -57,6 +60,9 @@ public class ConnectServer {
     public final static int ERROR_TIMEOUT = -2;
     public final static int ERROR_IO = -3;
     public final static int ERROR_FILE_OPEN = -4;
+    public final static int ERROR_PARSE = -5;
+    public final static int ERROR_VERSION = -6;
+    public final static int ERROR_KEY = -7;
 
     public final static int MODE_DESKTOP = 0;
     public final static int MODE_BACKUP = 1;
@@ -67,14 +73,12 @@ public class ConnectServer {
 
     public ConnectServer(Context context, String passwordDigest, int port){
         this.context = context;
-        this.passwordDigest = passwordDigest;
+        this.pwdDigestBase64 = passwordDigest;
         this.port = port;
     }
 
     public int connect(){
         serverAddress = null;
-        rsaCipher = new RSACipher();
-        rsaCipher.initialize();
         sendBroadcast();
         return receiveBroadCastResponse();
     }
@@ -94,28 +98,25 @@ public class ConnectServer {
         WifiInfo info = manager.getConnectionInfo();
         int ipAddr = info.getIpAddress();
         return String.format("%d.%d.%d.%d",
-                (ipAddr>>0)&0xff, (ipAddr>>8)&0xff, (ipAddr>>16)&0xff, (ipAddr>>24)&0xff);
+                ipAddr&0xff, (ipAddr>>8)&0xff, (ipAddr>>16)&0xff, (ipAddr>>24)&0xff);
     }
 
     void sendBroadcast() {
         SecureRandom random = new SecureRandom();
         byte[] randomBytes = new byte[randomBytesSize];
-        byte[] publicKeyBytes = rsaCipher.getPublicKeyBytes();
         String idAddr = getWifiIPAddress(context);
 
-        // ハッシュ値計算　(乱数)(パスワード)(公開鍵)(IPアドレス)のハッシュ
+        // ハッシュ値計算　(乱数)(パスワード)(IPアドレス)のハッシュ
         random.nextBytes(randomBytes);
-        ByteBuffer buffer = ByteBuffer.allocate(randomBytes.length+passwordDigest.length()+publicKeyBytes.length+idAddr.length());
+        ByteBuffer buffer = ByteBuffer.allocate(randomBytes.length+pwdDigestBase64.length()+idAddr.length());
         buffer.put(randomBytes);
-        buffer.put(passwordDigest.getBytes(StandardCharsets.UTF_8));
-        buffer.put(publicKeyBytes);
+        buffer.put(pwdDigestBase64.getBytes(StandardCharsets.UTF_8));
         buffer.put(idAddr.getBytes(StandardCharsets.UTF_8));
-        msgDigest = Hash.sha256EncodeToString(buffer.array());
+        clientMsgDigestBase64 = Hash.sha256EncodeBase64(buffer.array());
         String randomBytesBase64 = Base64.encodeToString(randomBytes, Base64.NO_WRAP);
-        String publicKeyBase64 = Base64.encodeToString(publicKeyBytes, Base64.NO_WRAP);
 
         // メッセージ本体　(アプリ名),(バージョン),(base64乱数),(base64公開鍵),(base64メッセージハッシュ)
-        String messageStr =  String.format("FileSYNC,0.1,%s,%s,%s", randomBytesBase64, publicKeyBase64, msgDigest);
+        String messageStr =  String.format("FileSYNC,0.1,%s,%s", randomBytesBase64, clientMsgDigestBase64);
 
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -152,17 +153,50 @@ public class ConnectServer {
             ServerSocket serverSocket = new ServerSocket(localPort);
             serverSocket.setSoTimeout(3000);
             Socket socket = serverSocket.accept();
+            serverAddress = socket.getInetAddress();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String data = reader.readLine();
 
-            if(!data.equals(Hash.sha256EncodeToString(msgDigest+passwordDigest))){
-                Log.e(TAG, "auth error");
-                msgDigest = null;
-                return ERROR_AUTHORIZATION;
+            String[] strs = data.split(",");
+            if(strs.length < 3 || !strs[0].equals("FileSYNC")){
+                Log.w(TAG, "receiveBroadCastResponse: parse error");
+                return ERROR_PARSE;
             }
 
-            serverAddress = socket.getInetAddress();
+            // バージョン
+            switch (strs[1]){
+                case "0.1":
+                    // メッセージ本体　(アプリ名),(バージョン),(base64公開鍵),(メッセージbase64ハッシュ)
+                    if(strs.length != 4){
+                        Log.w(TAG, "receiveBroadCastResponse: parse error");
+                        return ERROR_PARSE;
+                    }
+                    byte[] publicKeyBytes = Base64.decode(strs[2], Base64.NO_WRAP);
+
+                    String hostAddrStr = serverAddress.getHostAddress();
+
+                    // ハッシュ値計算　clientMsgDiges+pwdDigest+publicKeyBytes+hostAddr
+                    ByteBuffer buffer = ByteBuffer.allocate(clientMsgDigestBase64.length()+pwdDigestBase64.length()+publicKeyBytes.length+hostAddrStr.length()).order(ByteOrder.BIG_ENDIAN);
+                    buffer.put(clientMsgDigestBase64.getBytes(StandardCharsets.UTF_8));
+                    buffer.put(pwdDigestBase64.getBytes(StandardCharsets.UTF_8));
+                    buffer.put(publicKeyBytes);
+                    buffer.put(hostAddrStr.getBytes(StandardCharsets.UTF_8));
+                    String serverMsgDigestBase64 = Hash.sha256EncodeBase64(buffer.array());
+
+                    if(!strs[3].equals(serverMsgDigestBase64)){
+                        Log.w(TAG, "receiveBroadCastResponse: メッセージダイジェスト不一致");
+                        return ERROR_AUTHORIZATION;
+                    }
+
+                    rsaCipher = new RSACipher();
+                    rsaCipher.initialize(publicKeyBytes);
+
+                    break;
+
+                default:
+                    return ERROR_VERSION;
+            }
             serverSocket.close();
         } catch (SocketTimeoutException e){
             e.printStackTrace();
@@ -172,6 +206,10 @@ public class ConnectServer {
             e.printStackTrace();
             Log.e(TAG, "receiveBroadCastResponse: IOエラー");
             return ERROR_IO;
+        } catch (InvalidKeySpecException | InvalidKeyException e) {
+            e.printStackTrace();
+            Log.e(TAG, "receiveBroadCastResponse: 無効な公開鍵");
+            return ERROR_KEY;
         }
         Log.i(TAG, "server address:"+getServerAddress());
         return ERROR_SUCCESS;
@@ -224,7 +262,7 @@ public class ConnectServer {
                 connection.setRequestProperty("File-Path", serverPath);
                 connection.setRequestProperty("File-Size", String.valueOf(fileSize));
                 connection.setRequestProperty("Last-Modified", String.valueOf(lastModified));
-                connection.setRequestProperty("Sha-256", Hash.sha256EncodeToString(fileBuffer, bufferSize));
+                connection.setRequestProperty("Sha-256", Hash.sha256EncodeBase64(fileBuffer, bufferSize));
                 switch(mode){
                     case MODE_DESKTOP:
                         connection.setRequestProperty("Mode", "DESKTOP");
@@ -233,11 +271,10 @@ public class ConnectServer {
                         connection.setRequestProperty("Mode", "BACKUP");
                         break;
                 }
-                byte[] body = Hash.base64Encode(fileBuffer, bufferSize);
-                connection.setFixedLengthStreamingMode(body.length);
+                connection.setFixedLengthStreamingMode(bufferSize);
                 OutputStream httpStream = connection.getOutputStream();
 
-                httpStream.write(body, 0, body.length);
+                httpStream.write(fileBuffer, 0, bufferSize);
                 connection.connect();
 
                 // レスポンスコードの確認します。

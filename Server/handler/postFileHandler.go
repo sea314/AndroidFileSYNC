@@ -3,7 +3,6 @@
 package handler
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -68,9 +67,9 @@ func parsePostFileParam(request *http.Request) (PostFileParam, error) {
 	// body読み込み
 	bodyBuffer, err1 := io.ReadAll(request.Body)
 
-	param.fileData, err2 = base64.StdEncoding.DecodeString(string(bodyBuffer))
+	param.fileData = bodyBuffer
 
-	if sha256 != encryption.Sha256EncodeToString(param.fileData) || err1 != nil || err2 != nil {
+	if sha256 != encryption.Sha256EncodeToString(param.fileData) || err1 != nil {
 		return param, errors.New("read body error")
 	}
 	return param, nil

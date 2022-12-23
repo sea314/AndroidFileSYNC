@@ -9,32 +9,26 @@ import java.util.Arrays;
 
 public class Hash {
     // sha256ハッシュ値を計算
-    public static String sha256EncodeToString(byte[] data, int bufferSize){
+    public static byte[] sha256Encode(byte[] data, int size){
         try {
-            byte[] cipher_byte;
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(data, 0, bufferSize);
-            cipher_byte = md.digest();
-            return Base64.encodeToString(cipher_byte, Base64.NO_WRAP);
+            md.update(data, 0, size);
+            return md.digest();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    public static String sha256EncodeToString(byte[] data){
-        return sha256EncodeToString(data, data.length);
+    public static byte[] sha256Encode(byte[] data){
+        return sha256Encode(data, data.length);
     }
 
-    public static String sha256EncodeToString(String data){
-        return sha256EncodeToString(data.getBytes(StandardCharsets.UTF_8));
+    public static String sha256EncodeBase64(byte[] data, int size){
+        return Base64.encodeToString(sha256Encode(data, size), Base64.NO_WRAP);
     }
 
-    public static byte[] base64Encode(byte[] data, int size){
-        return Base64.encode(Arrays.copyOf(data, size), Base64.NO_WRAP);
-    }
-
-    public static byte[] base64Decode(byte[] bytes){
-        return Base64.encode(bytes, Base64.NO_WRAP);
+    public static String sha256EncodeBase64(byte[] data){
+        return Base64.encodeToString(sha256Encode(data), Base64.NO_WRAP);
     }
 }
