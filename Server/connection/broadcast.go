@@ -102,7 +102,7 @@ func checkBroadCastData(udpAddr *net.UDPAddr, msg string, pwdDigestBase64 string
 			log.Println("parse error: incorrect format")
 			return "", errors.New("parse error: incorrect format")
 		}
-		randomBytes, err := base64.URLEncoding.DecodeString(strs[2])
+		randomBytes, err := base64.RawURLEncoding.DecodeString(strs[2])
 		if(err != nil){
 			log.Println("parse error: "+err.Error())
 			return "", errors.New("parse error: "+err.Error())
@@ -140,7 +140,7 @@ func sendBroadCastResponse(udpAddr *net.UDPAddr, hostAddr string, cilentMsgDiges
 		log.Println("sendBroadCastResponse RSACipher.GetPublicKeyBytes:", err.Error())
 		return
 	}
-	publicKeyBytesBase64 := base64.URLEncoding.EncodeToString(publicKeyBytes)
+	publicKeyBytesBase64 := base64.RawURLEncoding.EncodeToString(publicKeyBytes)
 
 	msgDigestBase64 := handler.MakeMessageHash(hostAddr, pwdDigestBase64, []byte(cilentMsgDigestBase64), publicKeyBytes)
 

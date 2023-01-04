@@ -2,10 +2,9 @@ package encryption
 
 import (
 	"crypto/sha256"
-	"encoding/base64"
 )
 
-func Sha256EncodeToString(bytes []byte) string {
-	cipher_bytes := sha256.Sum256(bytes)
-	return base64.URLEncoding.EncodeToString(cipher_bytes[0:])
+func Sha256Encode(bytes []byte) []byte {
+	hash := sha256.Sum256(bytes)
+	return hash[0:]
 }

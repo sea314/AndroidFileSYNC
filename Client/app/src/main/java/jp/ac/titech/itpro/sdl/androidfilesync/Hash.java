@@ -23,12 +23,4 @@ public class Hash {
     public static byte[] sha256Encode(byte[] data){
         return sha256Encode(data, data.length);
     }
-
-    public static String sha256EncodeBase64(byte[] data, int size){
-        return Base64.encodeToString(sha256Encode(data, size), Base64.URL_SAFE | Base64.NO_WRAP);
-    }
-
-    public static String sha256EncodeBase64(byte[] data){
-        return Base64.encodeToString(sha256Encode(data), Base64.URL_SAFE | Base64.NO_WRAP);
-    }
 }

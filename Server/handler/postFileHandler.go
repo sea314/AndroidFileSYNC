@@ -4,7 +4,6 @@ package handler
 
 import (
 	"errors"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"strings"
 	"syscall"
 
-	"Server/encryption"
 	"Server/winAPI"
 
 	"github.com/labstack/echo/v4"
@@ -30,7 +28,7 @@ type PostFileParam struct {
 }
 
 func PostFileHandler(c echo.Context) error {
-	param, err := parsePostFileParam(c.Request())
+	param, err := parsePostFileParam(c)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -46,31 +44,29 @@ func PostFileHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func parsePostFileParam(request *http.Request) (PostFileParam, error) {
+func parsePostFileParam(c echo.Context) (PostFileParam, error) {
 	// header読み込み
 	var param PostFileParam
 	var err1, err2, err3, err4, err5 error = nil, nil, nil, nil, nil
 	var i64 int64
-	param.split, err1 = strconv.Atoi(request.Header.Get("Split"))
-	param.path = request.Header.Get("File-Path")
-	i64, err2 = strconv.ParseInt(request.Header.Get("File-Size"), 10, 64)
+
+	body, reqs, err := 
+	httpDecoder(c, "Split", "File-Path", "File-Size", "Last-Modified", "Mode")
+	if err != nil{
+		return param, err
+	}
+
+	param.split, err1 = strconv.Atoi(reqs[0])
+	param.path = reqs[1]
+	i64, err2 = strconv.ParseInt(reqs[2], 10, 64)
 	param.fileSize = uint64(i64)
-	i64, err3 = strconv.ParseInt(request.Header.Get("Last-Modified"), 10, 64)
+	i64, err3 = strconv.ParseInt(reqs[3], 10, 64)
 	param.lastModified = uint64(i64)
-	param.mode = request.Header.Get("Mode")
-	sha256 := request.Header.Get("Sha-256")
+	param.mode = reqs[4]
+	param.fileData = body
 
 	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil {
 		return param, errors.New("parse header error")
-	}
-
-	// body読み込み
-	bodyBuffer, err1 := io.ReadAll(request.Body)
-
-	param.fileData = bodyBuffer
-
-	if sha256 != encryption.Sha256EncodeToString(param.fileData) || err1 != nil {
-		return param, errors.New("read body error")
 	}
 	return param, nil
 }

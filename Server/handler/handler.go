@@ -41,10 +41,11 @@ func MakeMessageHash(ipAddr string, pwdDigestBase64 string, msgs... []byte) stri
 	}
 	binary.Write(&buf, binary.BigEndian, []byte(net.ParseIP(ipAddr).String()))
 	binary.Write(&buf, binary.BigEndian, []byte(pwdDigestBase64))
-	return encryption.Sha256EncodeToString(buf.Bytes())
+	str := base64.RawURLEncoding.EncodeToString(encryption.Sha256Encode(buf.Bytes()))
+	return str
 }
 
-func httpDecoder(c echo.Context, reqkeys... string) (body []byte, datas [][]byte, err error) {
+func httpDecoder(c echo.Context, reqkeys... string) (body []byte, datas []string, err error) {
 	request := c.Request()
 
 	// 共通鍵取得
@@ -58,14 +59,16 @@ func httpDecoder(c echo.Context, reqkeys... string) (body []byte, datas [][]byte
 	}
 
 	// Headerのデコード
-	datas = make([][]byte, len(reqkeys))
+	datas = make([]string, len(reqkeys))
+	decrypted := make([][]byte, len(reqkeys))
 	for i, reqKey := range reqkeys {
 		encryptedBase64 := request.Header.Get(reqKey)
-		encrypted, err := base64.URLEncoding.DecodeString(encryptedBase64)
+		encrypted, err := base64.RawURLEncoding.DecodeString(encryptedBase64)
 		if err != nil {
-			return nil, nil, fmt.Errorf("base64.URLEncoding.DecodeString(encryptedBase64):%w", err)
+			return nil, nil, fmt.Errorf("base64.RawURLEncoding.DecodeString(encryptedBase64):%w", err)
 		}
-		datas[i] = aesCipher.Decrypt(encrypted)
+		decrypted[i] = aesCipher.Decrypt(encrypted)
+		datas[i] = string(decrypted[i])
 	}
 
 	// Bodyデコード
@@ -76,7 +79,7 @@ func httpDecoder(c echo.Context, reqkeys... string) (body []byte, datas [][]byte
 	body = aesCipher.Decrypt(encrypted)
 
 	// データの確認
-	msgDigestBase64 := request.Header.Get("#Sha-256")
-	datas2 := append(datas, body)
-	return body, datas, verifyMessage(msgDigestBase64, c.RealIP(), pwdDigestBase64, datas2...)
+	msgDigestBase64 := request.Header.Get("Sha-256")
+	decrypted = append(decrypted, body)
+	return body, datas, verifyMessage(msgDigestBase64, c.RealIP(), pwdDigestBase64, decrypted...)
 }

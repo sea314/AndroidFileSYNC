@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -15,7 +16,7 @@ func PostLoginHander(c echo.Context) error {
 		return c.NoContent(http.StatusForbidden)
 	}
 
-	msgDigestBase64 := request.Header.Get("#Sha-256")
+	msgDigestBase64 := request.Header.Get("Sha-256")
 	// Bodyデコード
 	keyEncrypted, err := io.ReadAll(request.Body)
 	if err != nil {
@@ -37,5 +38,6 @@ func PostLoginHander(c echo.Context) error {
 	}
 	values["aesKey"] = aesCipher
 	sess.Set(c, values)
+	log.Println("認証OK:", c.RealIP())
 	return c.NoContent(http.StatusOK)
 }

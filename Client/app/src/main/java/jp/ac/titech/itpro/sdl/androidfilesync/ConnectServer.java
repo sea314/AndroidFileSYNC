@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -60,6 +61,7 @@ public class ConnectServer {
     int localPort;
     RSACipher rsaCipher;
     AESCipher aesCipher;
+    String wifiAddress;
 
 
     public final static int ERROR_SUCCESS = 0;
@@ -86,6 +88,7 @@ public class ConnectServer {
 
     public int connect(){
         serverAddress = null;
+        wifiAddress = getWifiIPAddress(context);
         sendBroadcast();
         int response = receiveBroadCastResponse();
         if(response != ERROR_SUCCESS)   return response;
@@ -115,8 +118,8 @@ public class ConnectServer {
         byte[] randomBytes = new byte[randomBytesSize];
 
         random.nextBytes(randomBytes);
-        String randomBytesBase64 = Base64.encodeToString(randomBytes, Base64.URL_SAFE | Base64.NO_WRAP);
-        clientMsgDigestBase64 = makeMessageHash(Collections.singletonList(randomBytes), getWifiIPAddress(context), pwdDigestBase64);
+        String randomBytesBase64 = Base64.encodeToString(randomBytes, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
+        clientMsgDigestBase64 = makeMessageHash(Collections.singletonList(randomBytes), wifiAddress, pwdDigestBase64);
 
         // メッセージ本体　(アプリ名),(バージョン),(base64乱数),(base64公開鍵),(base64メッセージハッシュ)
         String messageStr =  String.format("FileSYNC,0.1,%s,%s", randomBytesBase64, clientMsgDigestBase64);
@@ -175,7 +178,7 @@ public class ConnectServer {
                         Log.w(TAG, "receiveBroadCastResponse: parse error");
                         return ERROR_PARSE;
                     }
-                    byte[] publicKeyBytes = Base64.decode(strs[2], Base64.URL_SAFE | Base64.NO_WRAP);
+                    byte[] publicKeyBytes = Base64.decode(strs[2], Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
 
                     String hostAddrStr = serverAddress.getHostAddress();
 
@@ -232,7 +235,7 @@ public class ConnectServer {
             connection.setDoOutput(true);       // body有効化
             connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
             connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
-            connection.setRequestProperty("#Sha-256", makeMessageHash(Collections.singletonList(key), getWifiIPAddress(context), pwdDigestBase64));
+            connection.setRequestProperty("Sha-256", makeMessageHash(Collections.singletonList(key), wifiAddress, pwdDigestBase64));
 
             connection.setFixedLengthStreamingMode(encryptedKey.length);
             OutputStream httpStream = connection.getOutputStream();
@@ -270,12 +273,18 @@ public class ConnectServer {
 
             int splitIndex = 0;
             for(; (bufferSize = fileSteam.read(fileBuffer)) > 0; splitIndex++) {
-                sendFileData(splitIndex, url, fileBuffer,
-                        bufferSize, file.length(), serverPath,
+                byte[] buffer = fileBuffer;
+                if(bufferSize < BUFFER_SIZE){
+                    buffer = Arrays.copyOf(fileBuffer, bufferSize);
+                }
+                int ret = sendFileData(splitIndex, url, buffer,
+                        file.length(), serverPath,
                         file.lastModified(), mode);
+                if(ret != ERROR_SUCCESS) {
+                    return ret;
+                }
             }
-            sendFileData(splitIndex, url, fileBuffer,
-                    0, 0, serverPath,
+            sendFileData(splitIndex, url, fileBuffer, 0, serverPath,
                     file.lastModified(), mode);
             fileSteam.close();
 
@@ -290,67 +299,42 @@ public class ConnectServer {
     }
 
     private int sendFileData(int splitIndex, URL url, byte[] fileBuffer,
-                             int bufferSize, long fileSize, String serverPath,
+                             long fileSize, String serverPath,
                              long lastModified, int mode) {
         HttpURLConnection connection = null;
         try{
-            for(int retryCount =0; retryCount < RETRY_COUNT; retryCount++){
-                connection = (HttpURLConnection)url.openConnection();
-                connection.setConnectTimeout(3000); // タイムアウト 3 秒
-                connection.setReadTimeout(3000);
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);       // body有効化
-                connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
-                connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
-                connection.setRequestProperty("Split", String.valueOf(splitIndex));
-                connection.setRequestProperty("File-Path", serverPath);
-                connection.setRequestProperty("File-Size", String.valueOf(fileSize));
-                connection.setRequestProperty("Last-Modified", String.valueOf(lastModified));
-                connection.setRequestProperty("Sha-256", Hash.sha256EncodeBase64(fileBuffer, bufferSize));
-                switch(mode){
-                    case MODE_DESKTOP:
-                        connection.setRequestProperty("Mode", "DESKTOP");
-                        break;
-                    case MODE_BACKUP:
-                        connection.setRequestProperty("Mode", "BACKUP");
-                        break;
-                }
-                connection.setFixedLengthStreamingMode(bufferSize);
-                OutputStream httpStream = connection.getOutputStream();
+            connection = (HttpURLConnection)url.openConnection();
+            connection.setConnectTimeout(3000); // タイムアウト 3 秒
+            connection.setReadTimeout(3000);
+            httpEncoder(connection, Arrays.asList(
+                    new Pair<>("Split", String.valueOf(splitIndex)),
+                    new Pair<>("File-Path", serverPath),
+                    new Pair<>("File-Size", String.valueOf(fileSize)),
+                    new Pair<>("Last-Modified", String.valueOf(lastModified)),
+                    new Pair<>("Mode", mode == MODE_DESKTOP ? "DESKTOP" : "BACKUP")
+            ), fileBuffer);
+            connection.connect();
 
-                httpStream.write(fileBuffer, 0, bufferSize);
-                connection.connect();
+            // レスポンスコードの確認します。
+            int responseCode = connection.getResponseCode();
+            String response = connection.getResponseMessage();
+            connection.disconnect();
 
-                // レスポンスコードの確認します。
-                int responseCode = connection.getResponseCode();
-                String response = connection.getResponseMessage();
+            switch(responseCode){
+                case HttpURLConnection.HTTP_OK:
+                    return ERROR_SUCCESS;
 
-                switch(responseCode){
-                    case HttpURLConnection.HTTP_OK:
-                        return ERROR_SUCCESS;
+                case HttpURLConnection.HTTP_FORBIDDEN:
+                    return ERROR_AUTHORIZATION;
 
-                    case HttpURLConnection.HTTP_BAD_REQUEST:
-                        Log.e(TAG, "HTTP_BAD_REQUEST:"+response);
-                        continue;
-
-                    case HttpURLConnection.HTTP_SERVER_ERROR:
-                        Log.e(TAG, "HTTP_SERVER_ERROR:"+response);
-                        continue;
-
-                    default:
-                        Log.e(TAG, responseCode+":"+response);
-                        return -4;
-                }
+                default:
+                    Log.e(TAG, responseCode+":"+response);
+                    return ERROR_VERSION;
             }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return ERROR_FILE_OPEN;
         } catch (IOException e) {
             e.printStackTrace();
             return ERROR_IO;
         }
-        return ERROR_TIMEOUT;
     }
 
     public ArrayList<ServerFileInfo> getServerFileList(){
@@ -465,7 +449,7 @@ public class ConnectServer {
     }
 
     private boolean veryfyMessage(String msgDigestBase64, List<byte[]> msgs){
-        return msgDigestBase64.equals(makeMessageHash(msgs, getWifiIPAddress(context), pwdDigestBase64));
+        return msgDigestBase64.equals(makeMessageHash(msgs, wifiAddress, pwdDigestBase64));
     }
 
     private static String makeMessageHash(List<byte[]> msgs, String ipAddr, String pwdDigestBase64) {
@@ -480,10 +464,11 @@ public class ConnectServer {
             e.printStackTrace();
             return null;
         }
-        return Hash.sha256EncodeBase64(buf.toByteArray());
+        return Base64.encodeToString(Hash.sha256Encode(buf.toByteArray()), Base64.NO_WRAP | Base64.URL_SAFE | Base64.NO_PADDING);
     }
 
-    private void httpEncoder(HttpURLConnection connection, byte[] body, ArrayList<Pair<String, byte[]>> requests){
+    // connectionにリクエストとボディを暗号化して設定する
+    private void httpEncoder(HttpURLConnection connection, List<Pair<String, String>> requests, byte[] body){
         try {
             connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
             connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
@@ -491,14 +476,11 @@ public class ConnectServer {
             // ハッシュ値計算用バッファ
             ByteArrayOutputStream buf = new ByteArrayOutputStream();
 
-            for(Pair<String, byte[]> req : requests){
-                buf.write(req.first.getBytes(StandardCharsets.UTF_8));
-                buf.write(req.second);
-                byte[] keyEncrypted = aesCipher.encrypt(req.first.getBytes(StandardCharsets.UTF_8));
-                byte[] reqEncrypted = aesCipher.encrypt(req.second);
-                String keyBase64 = Base64.encodeToString(keyEncrypted, Base64.URL_SAFE | Base64.NO_WRAP);
-                String reqBase64 = Base64.encodeToString(reqEncrypted, Base64.URL_SAFE | Base64.NO_WRAP);
-                connection.setRequestProperty(keyBase64, reqBase64);
+            for(Pair<String, String> req : requests){
+                buf.write(req.second.getBytes(StandardCharsets.UTF_8));
+                byte[] reqEncrypted = aesCipher.encrypt(req.second.getBytes(StandardCharsets.UTF_8));
+                String reqBase64 = Base64.encodeToString(reqEncrypted, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
+                connection.setRequestProperty(req.first, reqBase64);
             }
 
             if(body != null) {
@@ -506,16 +488,16 @@ public class ConnectServer {
                 buf.write(body);
 
                 connection.setRequestMethod("POST");
+                connection.setRequestProperty("Sha-256", makeMessageHash(Collections.singletonList(buf.toByteArray()), wifiAddress, pwdDigestBase64));
                 connection.setDoOutput(true);       // body有効化
                 connection.setFixedLengthStreamingMode(bodyEncrypted.length);
                 OutputStream httpStream = connection.getOutputStream();
                 httpStream.write(bodyEncrypted, 0, bodyEncrypted.length);
-                connection.setRequestProperty("#Sha-256", makeMessageHash(Arrays.asList(buf.toByteArray(), body), getWifiIPAddress(context), pwdDigestBase64));
             }
             else{
                 connection.setRequestMethod("GET");
+                connection.setRequestProperty("Sha-256", makeMessageHash(Collections.singletonList(buf.toByteArray()), wifiAddress, pwdDigestBase64));
                 connection.setDoOutput(false);       // body無効化
-                connection.setRequestProperty("#Sha-256", makeMessageHash(Collections.singletonList(buf.toByteArray()), getWifiIPAddress(context), pwdDigestBase64));
             }
         } catch (IOException e) {
             e.printStackTrace();

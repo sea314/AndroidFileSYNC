@@ -15,6 +15,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.MenuItem;
@@ -124,7 +125,7 @@ public class SettingActivity extends AppCompatActivity {
             return;
         }
         if(!password.equals("****")){
-            config.setPasswordDigest(Hash.sha256EncodeBase64(password.getBytes(StandardCharsets.UTF_8)));
+            config.setPasswordDigest(Base64.encodeToString(Hash.sha256Encode(password.getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP));
         }
         config.setAutoBackup(autoBackupCheck.isChecked());
         config.setBackupPaths(backupPaths);
