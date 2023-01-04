@@ -1,5 +1,7 @@
 package jp.ac.titech.itpro.sdl.androidfilesync;
 
+import static java.lang.System.arraycopy;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
@@ -7,6 +9,7 @@ import java.nio.ByteOrder;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -21,7 +24,7 @@ import javax.crypto.spec.SecretKeySpec;
 // 初回以外のすべての暗号化に使う
 public class AESCipher {
     private final int keySize = 256;
-    private final String algorithmMode = "AES/CBC/PKCS5Padding";    // 実質的にpkcs7
+    private final String algorithmMode = "AES/CBC/NoPadding";   // paddingはpad/unpadで行うため不要
 
     private SecretKey secretKey;
     private byte[] initialVector;
@@ -105,14 +108,7 @@ public class AESCipher {
 
     public byte[] encrypt(byte[] bytes) {
         if(encrypter != null){
-            try{
-                return encrypter.doFinal(bytes);
-            } catch (IllegalBlockSizeException | BadPaddingException e) {
-                // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
-                e.printStackTrace();
-                assert false;
-                return new byte[]{};
-            }
+            return encrypter.update(pad(bytes));
         }
         else{
             throw new IllegalStateException("初期化前に暗号化しようとしました。");
@@ -121,14 +117,7 @@ public class AESCipher {
 
     public byte[] decrypt(byte[] bytes) throws BadPaddingException {
         if(decrypter != null){
-            try{
-                return decrypter.doFinal(bytes);
-            } catch (IllegalBlockSizeException e) {
-                // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
-                e.printStackTrace();
-                assert false;
-                return new byte[]{};
-            }
+            return unpad(decrypter.update(bytes));
         }
         else{
             throw new IllegalStateException("初期化前に復号化しようとしました。");
@@ -141,4 +130,22 @@ public class AESCipher {
         encrypter = null;
         decrypter = null;
     }
+
+    // PKCS#7に従いパディング付与
+    private byte[] pad(byte[] b){
+        int padSize = 16 - (b.length % 16);
+        byte[] padded = new byte[padSize+b.length];
+        arraycopy(b, 0, padded, 0, b.length);
+        for (int i= b.length; i<padded.length; i++){
+            padded[i] = (byte)padSize;
+        }
+        return padded;
+    }
+
+    // PKCS#7に従いパディング削除
+    private byte[] unpad(byte[] b){
+        int padSize = b[b.length-1];
+        return Arrays.copyOf(b, b.length-padSize);
+    }
+
 }
