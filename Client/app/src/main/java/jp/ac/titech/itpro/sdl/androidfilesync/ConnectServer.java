@@ -226,8 +226,8 @@ public class ConnectServer {
             // 公開鍵暗号化した共通鍵、(共通鍵、IPアドレス、パスワード)のハッシュを送る
             URL url = new URL("http://" + getServerAddress() + "/login");
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-//            connection.setConnectTimeout(3000); // タイムアウト 3 秒
-//            connection.setReadTimeout(3000);
+            connection.setConnectTimeout(3000); // タイムアウト 3 秒
+            connection.setReadTimeout(3000);
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);       // body有効化
             connection.setInstanceFollowRedirects(false);   // リダイレクト無効化

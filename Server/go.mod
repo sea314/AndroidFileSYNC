@@ -2,18 +2,7 @@ module Server
 
 go 1.18
 
-require (
-	github.com/gorilla/sessions v1.2.1
-	github.com/labstack/echo-contrib v0.13.0
-	github.com/labstack/echo/v4 v4.7.2
-)
-
-require (
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
-	github.com/gorilla/context v1.1.1 // indirect
-	github.com/gorilla/securecookie v1.1.1 // indirect
-	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
-)
+require github.com/labstack/echo/v4 v4.7.2
 
 require (
 	github.com/labstack/gommon v0.3.1

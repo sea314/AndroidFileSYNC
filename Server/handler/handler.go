@@ -11,18 +11,18 @@ import (
 	"io"
 	"net"
 
-	"github.com/gorilla/sessions"
-	"github.com/labstack/echo-contrib/session"
+	"Server/session"
+
 	"github.com/labstack/echo/v4"
 )
 
 
 type RSACipher = encryption.RSACipher
 type AESCipher = encryption.AESCipher
+type Sessions = session.Sessions
 
 var rsaCipher *RSACipher
-var publicKeyBytes []byte 
-var store *sessions.CookieStore
+var sess *Sessions
 const aesKeySize int = 256
 var pwdDigestBase64 string
 
@@ -48,11 +48,11 @@ func httpDecoder(c echo.Context, reqkeys... string) (body []byte, datas [][]byte
 	request := c.Request()
 
 	// 共通鍵取得
-	sess, err := session.Get("sessions", c)
+	values, err := sess.Get(c)
 	if err != nil {
-		return nil, nil, fmt.Errorf("session.Get(\"sessions\", c):%w", err)
+		return nil, nil, fmt.Errorf("sess.Get(c):%w", err)
 	}
-	aesCipher := sess.Values["aesKey"].(*AESCipher)
+	aesCipher := values["aesKey"].(*AESCipher)
 	if aesCipher == nil {
 		return nil, nil, fmt.Errorf("aes key error")
 	}

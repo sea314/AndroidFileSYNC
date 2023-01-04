@@ -3,11 +3,9 @@ package main
 import (
 	"Server/connection"
 	"Server/handler"
-	"log"
 	"os"
 	"strconv"
 
-	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 )
 
@@ -24,19 +22,12 @@ func main() {
 	rsaCipher := new(RSACipher)
 	rsaCipher.Initialize()
 
-	store, err := handler.Initialize(rsaCipher)
-	if(err != nil){
-		log.Println(err)
-		return
-	}
+	handler.Initialize(rsaCipher)
 
 	e := echo.New()
 //	e.Use(middleware.Logger())
-	e.Use(session.Middleware(store))
 
 	e.POST("/login", handler.PostLoginHander)
-
-	e.POST("/file", handler.PostFileHandler)
 
 	e.POST("/filedelete", handler.PostFileDeleteHandler)
 
@@ -44,6 +35,7 @@ func main() {
 
 	withLogin := e.Group("")
 	withLogin.Use(handler.CheckLogin)
+	withLogin.POST("/file", handler.PostFileHandler)
 
 	go connection.ClientConnectionRecieve(port, pwdDigestBase64, rsaCipher)
 

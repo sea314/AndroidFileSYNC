@@ -4,17 +4,15 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
 )
 
 func PostLoginHander(c echo.Context) error {
 	request := c.Request()
-	sess, err := session.Get("sessions", c)
+	sess.Create(c)
+	values, err := sess.Get(c)
 	if err != nil {
-		log.Errorf("session.Get(\"sessions\", c):%w", err)
-		return c.NoContent(http.StatusInternalServerError)
+		return c.NoContent(http.StatusForbidden)
 	}
 
 	msgDigestBase64 := request.Header.Get("#Sha-256")
@@ -37,7 +35,7 @@ func PostLoginHander(c echo.Context) error {
 	if err != nil {
 		return c.NoContent(http.StatusForbidden)
 	}
-	sess.Values["aesKey"] = aesCipher
-	sess.Save(c.Request(), c.Response())
+	values["aesKey"] = aesCipher
+	sess.Set(c, values)
 	return c.NoContent(http.StatusOK)
 }
