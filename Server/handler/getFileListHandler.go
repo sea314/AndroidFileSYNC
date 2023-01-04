@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"fmt"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,8 +29,8 @@ func GetFileListHandler(c echo.Context) error {
 			if path != directory {
 				relativePath, err := filepath.Rel(directory, path)
 				if err != nil {
-					fmt.Print("path parse error")
-					fmt.Print(err.Error())
+					log.Print("path parse error")
+					log.Print(err.Error())
 					return nil
 				}
 				relativePath = filepath.ToSlash(relativePath)

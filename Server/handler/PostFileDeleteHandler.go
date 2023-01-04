@@ -3,8 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 
@@ -24,10 +24,10 @@ func PostFileDeleteHandler(c echo.Context) error {
 	for i := 0; i < len(param.FileList); i++ {
 		dir := os.Getenv("AndroidFileSYNC BackupDirectory")
 		path := dir + "/" + param.FileList[i]
-		fmt.Println("delete:", path)
+		log.Println("delete:", path)
 		os.RemoveAll(path)
 	}
-	return c.String(http.StatusOK, "ok")
+	return c.NoContent(http.StatusOK)
 }
 
 func parsePostFileDeleteParam(request *http.Request) (PostFileDeleteParam, error) {
@@ -36,12 +36,12 @@ func parsePostFileDeleteParam(request *http.Request) (PostFileDeleteParam, error
 	// body読み込み
 	bodyBuffer, err1 := io.ReadAll(request.Body)
 	if err1 != nil {
-		fmt.Println(err1.Error())
+		log.Println(err1.Error())
 		return param, errors.New("body read error")
 	}
 
 	if err := json.Unmarshal(bodyBuffer, &param); err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		return param, errors.New("parse error")
 	}
 	return param, nil

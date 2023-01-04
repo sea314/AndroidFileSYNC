@@ -3,7 +3,7 @@ package main
 import (
 	"Server/connection"
 	"Server/handler"
-	"fmt"
+	"log"
 	"os"
 	"strconv"
 
@@ -26,13 +26,15 @@ func main() {
 
 	store, err := handler.Initialize(rsaCipher)
 	if(err != nil){
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
 	e := echo.New()
 //	e.Use(middleware.Logger())
 	e.Use(session.Middleware(store))
+
+	e.POST("/login", handler.PostLoginHander)
 
 	e.POST("/file", handler.PostFileHandler)
 

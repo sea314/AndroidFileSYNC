@@ -89,9 +89,17 @@ public class RSACipher {
         return keySpec.getEncoded();
     }
 
-    public byte[] encrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
+    public byte[] encrypt(byte[] bytes) throws IllegalBlockSizeException {
         if(encrypter != null){
-            return encrypter.doFinal(bytes);
+            try{
+                return encrypter.doFinal(bytes);
+            }
+            catch (BadPaddingException e){
+                // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
+                e.printStackTrace();
+                assert false;
+                return new byte[]{};
+            }
         }
         else{
             throw new IllegalStateException("初期化前もしくは秘密鍵を持たない状態で暗号化しようとしました。");

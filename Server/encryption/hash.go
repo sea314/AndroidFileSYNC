@@ -7,5 +7,5 @@ import (
 
 func Sha256EncodeToString(bytes []byte) string {
 	cipher_bytes := sha256.Sum256(bytes)
-	return base64.StdEncoding.EncodeToString(cipher_bytes[0:])
+	return base64.URLEncoding.EncodeToString(cipher_bytes[0:])
 }

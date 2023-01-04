@@ -9,8 +9,10 @@ import android.net.wifi.WifiManager;
 import android.os.StrictMode;
 import android.util.Base64;
 import android.util.Log;
+import android.util.Pair;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -23,24 +25,29 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
 
 public class ConnectServer {
     private final static String TAG = ConnectServer.class.getSimpleName();
@@ -80,7 +87,9 @@ public class ConnectServer {
     public int connect(){
         serverAddress = null;
         sendBroadcast();
-        return receiveBroadCastResponse();
+        int response = receiveBroadCastResponse();
+        if(response != ERROR_SUCCESS)   return response;
+        return login();
     }
 
     public String getServerAddress(){
@@ -104,16 +113,10 @@ public class ConnectServer {
     void sendBroadcast() {
         SecureRandom random = new SecureRandom();
         byte[] randomBytes = new byte[randomBytesSize];
-        String idAddr = getWifiIPAddress(context);
 
-        // ハッシュ値計算　(乱数)(パスワード)(IPアドレス)のハッシュ
         random.nextBytes(randomBytes);
-        ByteBuffer buffer = ByteBuffer.allocate(randomBytes.length+pwdDigestBase64.length()+idAddr.length());
-        buffer.put(randomBytes);
-        buffer.put(pwdDigestBase64.getBytes(StandardCharsets.UTF_8));
-        buffer.put(idAddr.getBytes(StandardCharsets.UTF_8));
-        clientMsgDigestBase64 = Hash.sha256EncodeBase64(buffer.array());
-        String randomBytesBase64 = Base64.encodeToString(randomBytes, Base64.NO_WRAP);
+        String randomBytesBase64 = Base64.encodeToString(randomBytes, Base64.URL_SAFE | Base64.NO_WRAP);
+        clientMsgDigestBase64 = makeMessageHash(Collections.singletonList(randomBytes), getWifiIPAddress(context), pwdDigestBase64);
 
         // メッセージ本体　(アプリ名),(バージョン),(base64乱数),(base64公開鍵),(base64メッセージハッシュ)
         String messageStr =  String.format("FileSYNC,0.1,%s,%s", randomBytesBase64, clientMsgDigestBase64);
@@ -172,17 +175,15 @@ public class ConnectServer {
                         Log.w(TAG, "receiveBroadCastResponse: parse error");
                         return ERROR_PARSE;
                     }
-                    byte[] publicKeyBytes = Base64.decode(strs[2], Base64.NO_WRAP);
+                    byte[] publicKeyBytes = Base64.decode(strs[2], Base64.URL_SAFE | Base64.NO_WRAP);
 
                     String hostAddrStr = serverAddress.getHostAddress();
 
-                    // ハッシュ値計算　clientMsgDiges+pwdDigest+publicKeyBytes+hostAddr
-                    ByteBuffer buffer = ByteBuffer.allocate(clientMsgDigestBase64.length()+pwdDigestBase64.length()+publicKeyBytes.length+hostAddrStr.length()).order(ByteOrder.BIG_ENDIAN);
-                    buffer.put(clientMsgDigestBase64.getBytes(StandardCharsets.UTF_8));
-                    buffer.put(pwdDigestBase64.getBytes(StandardCharsets.UTF_8));
-                    buffer.put(publicKeyBytes);
-                    buffer.put(hostAddrStr.getBytes(StandardCharsets.UTF_8));
-                    String serverMsgDigestBase64 = Hash.sha256EncodeBase64(buffer.array());
+                    // ハッシュ値計算　clientMsgDiges+pwdDigest+publicKeyBytes
+                    String serverMsgDigestBase64 = makeMessageHash(Arrays.asList(
+                            clientMsgDigestBase64.getBytes(StandardCharsets.UTF_8),
+                            publicKeyBytes
+                    ), hostAddrStr, pwdDigestBase64);
 
                     if(!strs[3].equals(serverMsgDigestBase64)){
                         Log.w(TAG, "receiveBroadCastResponse: メッセージダイジェスト不一致");
@@ -213,6 +214,49 @@ public class ConnectServer {
         }
         Log.i(TAG, "server address:"+getServerAddress());
         return ERROR_SUCCESS;
+    }
+
+    int login() {
+        try {
+            aesCipher = new AESCipher();
+            aesCipher.initialize();
+            byte[] key = aesCipher.getKeyBytes();
+            byte[] encryptedKey = rsaCipher.encrypt(key);
+
+            // 公開鍵暗号化した共通鍵、(共通鍵、IPアドレス、パスワード)のハッシュを送る
+            URL url = new URL("http://" + getServerAddress() + "/login");
+            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+//            connection.setConnectTimeout(3000); // タイムアウト 3 秒
+//            connection.setReadTimeout(3000);
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);       // body有効化
+            connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
+            connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
+            connection.setRequestProperty("#Sha-256", makeMessageHash(Collections.singletonList(key), getWifiIPAddress(context), pwdDigestBase64));
+
+            connection.setFixedLengthStreamingMode(encryptedKey.length);
+            OutputStream httpStream = connection.getOutputStream();
+            httpStream.write(encryptedKey, 0, encryptedKey.length);
+
+            connection.connect();
+
+            // レスポンスコードの確認します。
+            int responseCode = connection.getResponseCode();
+            String response = connection.getResponseMessage();
+
+            switch(responseCode){
+                case HttpURLConnection.HTTP_OK:
+                    return ERROR_SUCCESS;
+
+                default:
+                    Log.e(TAG, responseCode+":"+response);
+                    return ERROR_AUTHORIZATION;
+            }
+
+        } catch (IOException | IllegalBlockSizeException e) {
+            e.printStackTrace();
+            return ERROR_AUTHORIZATION;
+        }
     }
 
     public int sendFile(String localPath, String serverPath, int mode){
@@ -280,7 +324,6 @@ public class ConnectServer {
                 // レスポンスコードの確認します。
                 int responseCode = connection.getResponseCode();
                 String response = connection.getResponseMessage();
-                connection.disconnect();
 
                 switch(responseCode){
                     case HttpURLConnection.HTTP_OK:
@@ -421,5 +464,61 @@ public class ConnectServer {
         return sb.toString();
     }
 
+    private boolean veryfyMessage(String msgDigestBase64, List<byte[]> msgs){
+        return msgDigestBase64.equals(makeMessageHash(msgs, getWifiIPAddress(context), pwdDigestBase64));
+    }
 
+    private static String makeMessageHash(List<byte[]> msgs, String ipAddr, String pwdDigestBase64) {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        try{
+            for(byte[] msg : msgs){
+                buf.write(msg);
+            }
+            buf.write(ipAddr.getBytes(StandardCharsets.UTF_8));
+            buf.write(pwdDigestBase64.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return Hash.sha256EncodeBase64(buf.toByteArray());
+    }
+
+    private void httpEncoder(HttpURLConnection connection, byte[] body, ArrayList<Pair<String, byte[]>> requests){
+        try {
+            connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
+            connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
+
+            // ハッシュ値計算用バッファ
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+
+            for(Pair<String, byte[]> req : requests){
+                buf.write(req.first.getBytes(StandardCharsets.UTF_8));
+                buf.write(req.second);
+                byte[] keyEncrypted = aesCipher.encrypt(req.first.getBytes(StandardCharsets.UTF_8));
+                byte[] reqEncrypted = aesCipher.encrypt(req.second);
+                String keyBase64 = Base64.encodeToString(keyEncrypted, Base64.URL_SAFE | Base64.NO_WRAP);
+                String reqBase64 = Base64.encodeToString(reqEncrypted, Base64.URL_SAFE | Base64.NO_WRAP);
+                connection.setRequestProperty(keyBase64, reqBase64);
+            }
+
+            if(body != null) {
+                byte[] bodyEncrypted = aesCipher.encrypt(body);
+                buf.write(body);
+
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);       // body有効化
+                connection.setFixedLengthStreamingMode(bodyEncrypted.length);
+                OutputStream httpStream = connection.getOutputStream();
+                httpStream.write(bodyEncrypted, 0, bodyEncrypted.length);
+                connection.setRequestProperty("#Sha-256", makeMessageHash(Arrays.asList(buf.toByteArray(), body), getWifiIPAddress(context), pwdDigestBase64));
+            }
+            else{
+                connection.setRequestMethod("GET");
+                connection.setDoOutput(false);       // body無効化
+                connection.setRequestProperty("#Sha-256", makeMessageHash(Collections.singletonList(buf.toByteArray()), getWifiIPAddress(context), pwdDigestBase64));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

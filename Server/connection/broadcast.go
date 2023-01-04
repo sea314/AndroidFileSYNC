@@ -2,9 +2,8 @@ package connection
 
 import (
 	"Server/encryption"
-	"bytes"
+	"Server/handler"
 	"encoding/base64"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -103,16 +102,13 @@ func checkBroadCastData(udpAddr *net.UDPAddr, msg string, pwdDigestBase64 string
 			log.Println("parse error: incorrect format")
 			return "", errors.New("parse error: incorrect format")
 		}
-		randomBytes, err := base64.StdEncoding.DecodeString(strs[2])
+		randomBytes, err := base64.URLEncoding.DecodeString(strs[2])
 		if(err != nil){
 			log.Println("parse error: "+err.Error())
 			return "", errors.New("parse error: "+err.Error())
 		}
-		var buf bytes.Buffer
-		binary.Write(&buf, binary.BigEndian, randomBytes)
-		binary.Write(&buf, binary.BigEndian, []byte(pwdDigestBase64))
-		binary.Write(&buf, binary.BigEndian, []byte(clientIP))
-		msgDigestBase64 = encryption.Sha256EncodeToString(buf.Bytes())
+		
+		msgDigestBase64 = handler.MakeMessageHash(clientIP, pwdDigestBase64, randomBytes)
 		if(msgDigestBase64 != strs[3]){
 			log.Println("authentication error")
 			return "", errors.New("authentication error")
@@ -144,15 +140,9 @@ func sendBroadCastResponse(udpAddr *net.UDPAddr, hostAddr string, cilentMsgDiges
 		log.Println("sendBroadCastResponse RSACipher.GetPublicKeyBytes:", err.Error())
 		return
 	}
-	publicKeyBytesBase64 := base64.StdEncoding.EncodeToString(publicKeyBytes)
+	publicKeyBytesBase64 := base64.URLEncoding.EncodeToString(publicKeyBytes)
 
-	var msgDigest bytes.Buffer
-	binary.Write(&msgDigest, binary.BigEndian, []byte(cilentMsgDigestBase64))
-	binary.Write(&msgDigest, binary.BigEndian, []byte(pwdDigestBase64))
-	binary.Write(&msgDigest, binary.BigEndian, publicKeyBytes)
-	binary.Write(&msgDigest, binary.BigEndian, []byte(hostAddr))
-
-	msgDigestBase64 := encryption.Sha256EncodeToString(msgDigest.Bytes())
+	msgDigestBase64 := handler.MakeMessageHash(hostAddr, pwdDigestBase64, []byte(cilentMsgDigestBase64), publicKeyBytes)
 
 	// メッセージ本体　(アプリ名),(バージョン),(base64公開鍵),(base64メッセージハッシュ)
 	msg := fmt.Sprintf("FileSYNC,0.1,%s,%s", publicKeyBytesBase64, msgDigestBase64)

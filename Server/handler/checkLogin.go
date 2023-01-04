@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/labstack/echo-contrib/session"
@@ -10,14 +10,15 @@ import (
 
 func CheckLogin(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		_, err := session.Get("sessions", c)
+		sess, err := session.Get("sessions", c)
 		if err != nil {
-			fmt.Println(err)
+			log.Println("CheckLogin() session.Get:%w", err)
 			return c.String(http.StatusInternalServerError, "something wrong in getting session")
 		}
-
-		// todo
-		// ログインチェック作る
+		
+		if sess.Values["aesKey"] == nil {
+			return c.String(http.StatusForbidden, "please login")
+		}
 		return next(c)
 	}
 }

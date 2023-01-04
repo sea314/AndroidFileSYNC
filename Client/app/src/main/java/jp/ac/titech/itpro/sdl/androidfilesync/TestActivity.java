@@ -46,7 +46,7 @@ public class TestActivity extends AppCompatActivity {
 
     public void onClickTest(View v){
         Log.d(TAG, "onClickTest");
-        checkAESKeySave();
+        checkAES();
     }
 
     void checkAESKeySave(){
@@ -145,7 +145,7 @@ public class TestActivity extends AppCompatActivity {
 
             test_view4.setText(new String(decrypted2));
 
-        } catch (InvalidKeyException | IllegalBlockSizeException | BadPaddingException | InvalidAlgorithmParameterException e) {
+        } catch (InvalidKeyException | BadPaddingException | InvalidAlgorithmParameterException e) {
             e.printStackTrace();
         }
     }

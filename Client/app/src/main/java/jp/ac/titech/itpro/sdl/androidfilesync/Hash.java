@@ -25,10 +25,10 @@ public class Hash {
     }
 
     public static String sha256EncodeBase64(byte[] data, int size){
-        return Base64.encodeToString(sha256Encode(data, size), Base64.NO_WRAP);
+        return Base64.encodeToString(sha256Encode(data, size), Base64.URL_SAFE | Base64.NO_WRAP);
     }
 
     public static String sha256EncodeBase64(byte[] data){
-        return Base64.encodeToString(sha256Encode(data), Base64.NO_WRAP);
+        return Base64.encodeToString(sha256Encode(data), Base64.URL_SAFE | Base64.NO_WRAP);
     }
 }

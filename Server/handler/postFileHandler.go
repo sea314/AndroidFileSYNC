@@ -4,8 +4,8 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/user"
@@ -36,14 +36,14 @@ func PostFileHandler(c echo.Context) error {
 	}
 
 	if param.split == 0 {
-		fmt.Println("file recieved:", param.path)
+		log.Println("file recieved:", param.path)
 	}
 
 	err = writeFile(param)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	return c.String(http.StatusOK, "ok")
+	return c.NoContent(http.StatusOK)
 }
 
 func parsePostFileParam(request *http.Request) (PostFileParam, error) {
@@ -120,6 +120,9 @@ func writeFile(param PostFileParam) error {
 			return errors.New("can't set modified time" + filePath)
 		}
 		hFile, err := syscall.CreateFile(w_filePath, syscall.GENERIC_WRITE, 0, nil, syscall.OPEN_EXISTING, syscall.FILE_ATTRIBUTE_NORMAL, 0)
+		if err != nil {
+			return errors.New("can't set modified time" + filePath)
+		}
 		modifiedTime := winAPI.UnixTimeToFileTime(param.lastModified)
 		syscall.SetFileTime(hFile, nil, nil, &modifiedTime)
 		syscall.CloseHandle(hFile)

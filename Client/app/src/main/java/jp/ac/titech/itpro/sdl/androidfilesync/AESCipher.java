@@ -47,7 +47,6 @@ public class AESCipher {
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidAlgorithmParameterException | InvalidKeyException e) {
             // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
             e.printStackTrace();
-            assert false;
         }
     }
 
@@ -104,18 +103,32 @@ public class AESCipher {
     }
 
 
-    public byte[] encrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
+    public byte[] encrypt(byte[] bytes) {
         if(encrypter != null){
-            return encrypter.doFinal(bytes);
+            try{
+                return encrypter.doFinal(bytes);
+            } catch (IllegalBlockSizeException | BadPaddingException e) {
+                // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
+                e.printStackTrace();
+                assert false;
+                return new byte[]{};
+            }
         }
         else{
             throw new IllegalStateException("初期化前に暗号化しようとしました。");
         }
     }
 
-    public byte[] decrypt(byte[] bytes) throws IllegalBlockSizeException, BadPaddingException {
+    public byte[] decrypt(byte[] bytes) throws BadPaddingException {
         if(decrypter != null){
-            return decrypter.doFinal(bytes);
+            try{
+                return decrypter.doFinal(bytes);
+            } catch (IllegalBlockSizeException e) {
+                // keySizeやalgorithmModeを変更しない限りこの例外は出ないはず
+                e.printStackTrace();
+                assert false;
+                return new byte[]{};
+            }
         }
         else{
             throw new IllegalStateException("初期化前に復号化しようとしました。");
