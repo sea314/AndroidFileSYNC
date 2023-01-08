@@ -41,10 +41,12 @@ func (s *Sessions) Create(c echo.Context) {
 
 func (s *Sessions) create(key string){
 	s.mutex.Lock()
-	_, ok := s.sess.Load(key)
-	if(!ok){	// ない場合だけ作る
-		s.sess.Store(key, newsession(time.Now().Unix()+24*60*60))
+	raw, ok := s.sess.Load(key)
+	if(ok){	// ある場合はロックが解除されるまで待つ
+		sess := raw.(*session)
+		sess.mutex.Lock()
 	}
+	s.sess.Store(key, newsession(time.Now().Unix()+24*60*60))
 	s.mutex.Unlock()
 }
 
@@ -68,13 +70,13 @@ func (s *Sessions) getAndLock(key string) (map[string]interface{}, error) {
 	return sess.values, nil
 }
 
-func (s *Sessions) SetAndUnlock(c echo.Context, values map[string]interface{}) error {
+func (s *Sessions) Set(c echo.Context, values map[string]interface{}) error {
 	key := c.RealIP()
-	return s.setAndUnlock(key, values)
+	return s.set(key, values)
 }
 
 
-func (s *Sessions) setAndUnlock(key string, values map[string]interface{}) error {
+func (s *Sessions) set(key string, values map[string]interface{}) error {
 	raw, ok := s.sess.Load(key)
 	if(!ok){
 		return errors.New("Createを先に実行")
@@ -86,7 +88,6 @@ func (s *Sessions) setAndUnlock(key string, values map[string]interface{}) error
 		return errors.New("有効期限切れ")
 	}
 	sess.values = values
-	sess.mutex.Unlock()
 	return nil
 }
 

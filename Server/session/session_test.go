@@ -33,7 +33,8 @@ func session_create_load_save(t *testing.T, sess *Sessions, key string, id int, 
 	fmt.Println(value)
 	time.Sleep(time.Microsecond*200)
 	fmt.Println("key:",key," id:",id," release")
-	sess.setAndUnlock(key, value)
+	sess.set(key, value)
+	sess.unlock(key)
 	wg.Done()
 }
 
