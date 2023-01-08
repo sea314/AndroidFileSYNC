@@ -44,6 +44,12 @@ func (c *AESCipher) InitializeWithKeyBytes(b []byte) error {
 }
 
 func (c *AESCipher) Decrypt(ciphertext []byte) []byte {
+	if len(ciphertext) == 0 {
+		return []byte{}
+	}
+	if len(ciphertext) % aes.BlockSize != 0 {
+		return nil
+	}
 	decrypted := make([]byte, len(ciphertext))
 	c.decrypter.CryptBlocks(decrypted, ciphertext)
 	return c.unpad(decrypted)

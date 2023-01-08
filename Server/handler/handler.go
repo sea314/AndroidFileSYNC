@@ -41,18 +41,18 @@ func MakeMessageHash(ipAddr string, pwdDigestBase64 string, msgs... []byte) stri
 	}
 	binary.Write(&buf, binary.BigEndian, []byte(net.ParseIP(ipAddr).String()))
 	binary.Write(&buf, binary.BigEndian, []byte(pwdDigestBase64))
-	str := base64.RawURLEncoding.EncodeToString(encryption.Sha256Encode(buf.Bytes()))
-	return str
+	return base64.RawURLEncoding.EncodeToString(encryption.Sha256Encode(buf.Bytes()))
 }
 
-func httpDecoder(c echo.Context, reqkeys... string) (body []byte, datas []string, err error) {
+func requestDecrypter(c echo.Context, reqkeys... string) (body []byte, datas []string, err error) {
 	request := c.Request()
 
 	// 共通鍵取得
-	values, err := sess.Get(c)
+	values, err := sess.GetAndLock(c)
 	if err != nil {
 		return nil, nil, fmt.Errorf("sess.Get(c):%w", err)
 	}
+	defer sess.Unlock(c)
 	aesCipher := values["aesKey"].(*AESCipher)
 	if aesCipher == nil {
 		return nil, nil, fmt.Errorf("aes key error")
@@ -82,4 +82,21 @@ func httpDecoder(c echo.Context, reqkeys... string) (body []byte, datas []string
 	msgDigestBase64 := request.Header.Get("Sha-256")
 	decrypted = append(decrypted, body)
 	return body, datas, verifyMessage(msgDigestBase64, c.RealIP(), pwdDigestBase64, decrypted...)
+}
+
+func responseEncrypter(c echo.Context, res []byte) ([]byte, error){
+	// 共通鍵取得
+	values, err := sess.GetAndLock(c)
+	if err != nil {
+		return nil, fmt.Errorf("sess.Get(c):%w", err)
+	}
+	defer sess.Unlock(c)
+	aesCipher := values["aesKey"].(*AESCipher)
+	if aesCipher == nil {
+		return nil, fmt.Errorf("aes key error")
+	}
+
+	encrypted := aesCipher.Encrypt(res)
+	hash := MakeMessageHash(c.RealIP(), pwdDigestBase64, res)
+	return append(encrypted, []byte(hash)...), nil
 }

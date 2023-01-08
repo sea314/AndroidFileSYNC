@@ -11,10 +11,11 @@ import (
 func PostLoginHander(c echo.Context) error {
 	request := c.Request()
 	sess.Create(c)
-	values, err := sess.Get(c)
+	values, err := sess.GetAndLock(c)
 	if err != nil {
 		return c.NoContent(http.StatusForbidden)
 	}
+	defer sess.Unlock(c)
 
 	msgDigestBase64 := request.Header.Get("Sha-256")
 	// Bodyデコード

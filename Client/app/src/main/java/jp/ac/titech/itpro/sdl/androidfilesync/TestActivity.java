@@ -145,7 +145,7 @@ public class TestActivity extends AppCompatActivity {
 
             test_view4.setText(new String(decrypted2));
 
-        } catch (InvalidKeyException | BadPaddingException | InvalidAlgorithmParameterException e) {
+        } catch (InvalidKeyException | InvalidAlgorithmParameterException e) {
             e.printStackTrace();
         }
     }

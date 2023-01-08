@@ -2,6 +2,8 @@ package handler
 
 import (
 	"os"
+
+	"Server/session"
 )
 
 
@@ -9,5 +11,5 @@ import (
 func Initialize(_rsaCipher *RSACipher) {
 	pwdDigestBase64 = os.Getenv("AndroidFileSYNC PasswordDigest")
 	rsaCipher = _rsaCipher
-	sess = new(Sessions)
+	sess = session.NewSessions()
 }

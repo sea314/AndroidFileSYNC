@@ -31,11 +31,10 @@ func main() {
 
 	e.POST("/filedelete", handler.PostFileDeleteHandler)
 
-	e.GET("/filelist", handler.GetFileListHandler)
-
 	withLogin := e.Group("")
 	withLogin.Use(handler.CheckLogin)
 	withLogin.POST("/file", handler.PostFileHandler)
+	withLogin.GET("/filelist", handler.GetFileListHandler)
 
 	go connection.ClientConnectionRecieve(port, pwdDigestBase64, rsaCipher)
 

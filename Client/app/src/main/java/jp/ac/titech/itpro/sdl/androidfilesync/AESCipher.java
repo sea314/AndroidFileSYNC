@@ -115,7 +115,7 @@ public class AESCipher {
         }
     }
 
-    public byte[] decrypt(byte[] bytes) throws BadPaddingException {
+    public byte[] decrypt(byte[] bytes) {
         if(decrypter != null){
             return unpad(decrypter.update(bytes));
         }

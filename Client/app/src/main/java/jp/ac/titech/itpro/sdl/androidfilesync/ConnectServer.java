@@ -306,7 +306,7 @@ public class ConnectServer {
             connection = (HttpURLConnection)url.openConnection();
             connection.setConnectTimeout(3000); // タイムアウト 3 秒
             connection.setReadTimeout(3000);
-            httpEncoder(connection, Arrays.asList(
+            requestEncrypter(connection, Arrays.asList(
                     new Pair<>("Split", String.valueOf(splitIndex)),
                     new Pair<>("File-Path", serverPath),
                     new Pair<>("File-Size", String.valueOf(fileSize)),
@@ -344,14 +344,13 @@ public class ConnectServer {
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
             connection.setConnectTimeout(3000); // タイムアウト 3 秒
             connection.setReadTimeout(3000);
-            connection.setRequestMethod("GET");
-            connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
+            requestEncrypter(connection, Collections.emptyList(), null);
 
             connection.connect();
 
             int responseCode = connection.getResponseCode();
             String response = connection.getResponseMessage();
-            String body = convertToString(connection.getInputStream());
+            String body = new String(responseDecrypter(connection.getInputStream()));
 
             connection.disconnect();
 
@@ -413,8 +412,8 @@ public class ConnectServer {
                         Log.e(TAG, "HTTP_BAD_REQUEST:"+response);
                         continue;
 
-                    case HttpURLConnection.HTTP_SERVER_ERROR:
-                        Log.e(TAG, "HTTP_SERVER_ERROR:"+response);
+                    case HttpURLConnection.HTTP_INTERNAL_ERROR:
+                        Log.e(TAG, "HTTP_INTERNAL_ERROR:"+response);
                         continue;
 
                     default:
@@ -433,25 +432,6 @@ public class ConnectServer {
         return ERROR_TIMEOUT;
     }
 
-    private String convertToString(InputStream stream) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        String line = "";
-        BufferedReader br = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
-        while ((line = br.readLine()) != null) {
-            sb.append(line);
-        }
-        try {
-            stream.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return sb.toString();
-    }
-
-    private boolean veryfyMessage(String msgDigestBase64, List<byte[]> msgs){
-        return msgDigestBase64.equals(makeMessageHash(msgs, wifiAddress, pwdDigestBase64));
-    }
-
     private static String makeMessageHash(List<byte[]> msgs, String ipAddr, String pwdDigestBase64) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try{
@@ -468,7 +448,7 @@ public class ConnectServer {
     }
 
     // connectionにリクエストとボディを暗号化して設定する
-    private void httpEncoder(HttpURLConnection connection, List<Pair<String, String>> requests, byte[] body){
+    private void requestEncrypter(HttpURLConnection connection, List<Pair<String, String>> requests, byte[] body){
         try {
             connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
             connection.setRequestProperty("Content-Type", "application/octet-stream");  // バイナリ全般
@@ -503,4 +483,33 @@ public class ConnectServer {
             e.printStackTrace();
         }
     }
+
+    byte[] responseDecrypter(InputStream input) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte [] buffer = new byte[1024];
+        while(true) {
+            int len = input.read(buffer);
+            if(len < 0) {
+                break;
+            }
+            output.write(buffer, 0, len);
+        }
+        return aesCipher.decrypt(output.toByteArray());
+    }
+
+    private String convertToString(InputStream stream) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        String line = "";
+        BufferedReader br = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+        while ((line = br.readLine()) != null) {
+            sb.append(line);
+        }
+        try {
+            stream.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return sb.toString();
+    }
+
 }

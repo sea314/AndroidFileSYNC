@@ -51,7 +51,7 @@ func parsePostFileParam(c echo.Context) (PostFileParam, error) {
 	var i64 int64
 
 	body, reqs, err := 
-	httpDecoder(c, "Split", "File-Path", "File-Size", "Last-Modified", "Mode")
+	requestDecrypter(c, "Split", "File-Path", "File-Size", "Last-Modified", "Mode")
 	if err != nil{
 		return param, err
 	}
