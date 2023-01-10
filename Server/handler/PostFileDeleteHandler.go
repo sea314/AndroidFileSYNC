@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -16,7 +15,7 @@ type PostFileDeleteParam struct {
 }
 
 func PostFileDeleteHandler(c echo.Context) error {
-	param, err := parsePostFileDeleteParam(c.Request())
+	param, err := parsePostFileDeleteParam(c)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -30,17 +29,17 @@ func PostFileDeleteHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func parsePostFileDeleteParam(request *http.Request) (PostFileDeleteParam, error) {
+func parsePostFileDeleteParam(c echo.Context) (PostFileDeleteParam, error) {
 	// header読み込み
 	var param PostFileDeleteParam
-	// body読み込み
-	bodyBuffer, err1 := io.ReadAll(request.Body)
+
+	body, _, err1 := requestDecrypter(c)
 	if err1 != nil {
 		log.Println(err1.Error())
 		return param, errors.New("body read error")
 	}
 
-	if err := json.Unmarshal(bodyBuffer, &param); err != nil {
+	if err := json.Unmarshal(body, &param); err != nil {
 		log.Println(err.Error())
 		return param, errors.New("parse error")
 	}

@@ -389,14 +389,7 @@ public class ConnectServer {
                 connection = (HttpURLConnection)url.openConnection();
                 connection.setConnectTimeout(3000); // タイムアウト 3 秒
                 connection.setReadTimeout(3000);
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);       // body有効化
-                connection.setInstanceFollowRedirects(false);   // リダイレクト無効化
-                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-
-                PrintStream ps = new PrintStream(connection.getOutputStream());
-                ps.print(json);
-                ps.close();
+                requestEncrypter(connection, Arrays.asList(), json.toString().getBytes(StandardCharsets.UTF_8));
                 connection.connect();
 
                 // レスポンスコードの確認します。
@@ -496,20 +489,4 @@ public class ConnectServer {
         }
         return aesCipher.decrypt(output.toByteArray());
     }
-
-    private String convertToString(InputStream stream) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        String line = "";
-        BufferedReader br = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
-        while ((line = br.readLine()) != null) {
-            sb.append(line);
-        }
-        try {
-            stream.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return sb.toString();
-    }
-
 }
