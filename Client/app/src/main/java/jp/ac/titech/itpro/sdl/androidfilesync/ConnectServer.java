@@ -284,7 +284,7 @@ public class ConnectServer {
                     return ret;
                 }
             }
-            sendFileData(splitIndex, url, fileBuffer, 0, serverPath,
+            sendFileData(splitIndex, url, new byte[]{}, 0, serverPath,
                     file.lastModified(), mode);
             fileSteam.close();
 

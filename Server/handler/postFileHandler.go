@@ -87,7 +87,9 @@ func writeFile(param PostFileParam) error {
 		dir := os.Getenv("AndroidFileSYNC BackupDirectory")
 		filePath = dir + "/" + param.path
 		if param.split == 0 {
-			os.MkdirAll(filepath.Dir(filePath), os.ModeDir)
+			if f, err := os.Stat(filePath); os.IsNotExist(err) || !f.IsDir(){
+				os.MkdirAll(filepath.Dir(filePath), os.ModeDir)
+			}
 		}
 	}
 
