@@ -1,10 +1,14 @@
 - Server、Clientの通信暗号化
 	1. https化
+		自己署名証明書で暗号化
+		go/src/crypto/tls/generate_cert.goで生成可能
 	2. 自前で暗号化
 		公開鍵生成→共通鍵送信
 		javaはbouncy castle、goはcrypto/rsa、crypt/aesで暗号扱える
 		rsaの2048bit、aesの256bit使う
 		rsa公開鍵はder形式、aes共通鍵は(初期ベクトル長)(初期ベクトルbase64)(鍵長)(鍵base64)で送信
+	3. API認証
+		一般的なAPI認証の手法を取り入れる
 - 接続方法案
 	サーバーは秘密鍵を固定
 	クライアント		サーバー
@@ -14,6 +18,8 @@
 	HTTP (共通鍵、(共通鍵、IP、パスワード)ハッシュ)暗号化 →
 			← HTTP_OK
 
+- HTTP(s)の使い方変更
+	- Requestに入れるのではなく、全部Bodyにjson形式で入れる
 
 	
 - 同期機能の自動起動
@@ -38,5 +44,5 @@
 		- IPアドレスをハッシュ化に追加することで、正規のサーバー・クライアントのデータを使ってIPアドレスのみを差し替えた攻撃に対策
 		- 乱数を時間依存からセキュリティに配慮したSecureRandomに変更
 			- 乱数を事前に予測しにくく
-			
+	- 
 		

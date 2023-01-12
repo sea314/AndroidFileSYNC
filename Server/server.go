@@ -17,11 +17,15 @@ func main() {
 	port, _ := strconv.Atoi(os.Getenv("AndroidFileSYNC Port"))
 	pwdDigestBase64 := os.Getenv("AndroidFileSYNC PasswordDigest")
 	directory := os.Getenv("AndroidFileSYNC BackupDirectory")
+	privateKeyFile := "privateKey.key"
 	os.MkdirAll(directory, os.ModeDir)
 
 	rsaCipher := new(RSACipher)
-	rsaCipher.Initialize()
-
+	err := rsaCipher.InitializeWithPrivateKeyFile(privateKeyFile)
+	if err != nil{
+		rsaCipher.Initialize()
+		rsaCipher.SavePrivateKey(privateKeyFile)
+	}
 	handler.Initialize(rsaCipher)
 
 	e := echo.New()
